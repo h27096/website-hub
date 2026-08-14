@@ -1006,6 +1006,23 @@ async function overseerLogin() {
   ☢ MAINTENANCE MODE
 </button>
 
+<div style="margin-top:15px;">
+
+  <strong>☢ CUSTOM MAINTENANCE MESSAGE</strong>
+
+  <input
+    id="maintenanceMessageInput"
+    type="text"
+    placeholder="ENTER MAINTENANCE MESSAGE"
+    style="margin-top:10px;"
+  >
+
+  <button onclick="saveMaintenanceMessage()">
+    SAVE MESSAGE
+  </button>
+
+</div>
+
       <button onclick="showSecretFiles()">
         🕵️ SECRET FILES
       </button>
@@ -1997,6 +2014,69 @@ async function reactivateCode(id) {
     enable
       ? "☢ MAINTENANCE MODE ENABLED."
       : "☢ MAINTENANCE MODE DISABLED."
+  );
+}
+
+  async function saveMaintenanceMessage() {
+
+  const input =
+    document.getElementById(
+      "maintenanceMessageInput"
+    );
+
+  const message =
+    input.value.trim();
+
+  if (!message) {
+
+    alert(
+      "☢ MAINTENANCE MESSAGE CANNOT BE EMPTY."
+    );
+
+    return;
+  }
+
+  const response =
+    await fetch(
+      SUPABASE_URL +
+      "/rest/v1/rpc/set_maintenance_message",
+      {
+        method: "POST",
+
+        headers: {
+          "apikey": SUPABASE_KEY,
+
+          "Authorization":
+            "Bearer " +
+            window.overseerSession.access_token,
+
+          "Content-Type":
+            "application/json"
+        },
+
+        body:
+          JSON.stringify({
+            new_message: message
+          })
+      }
+    );
+
+  if (!response.ok) {
+
+    const error =
+      await response.text();
+
+    console.error(error);
+
+    alert(
+      "☢ FAILED TO SAVE MAINTENANCE MESSAGE."
+    );
+
+    return;
+  }
+
+  alert(
+    "☢ MAINTENANCE MESSAGE SAVED."
   );
 }
   
