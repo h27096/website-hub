@@ -1002,6 +1002,10 @@ async function overseerLogin() {
         📂 MANAGE WEBSITES
       </button>
 
+      <button onclick="toggleMaintenanceMode()">
+  ☢ MAINTENANCE MODE
+</button>
+
       <button onclick="showSecretFiles()">
         🕵️ SECRET FILES
       </button>
@@ -1909,6 +1913,91 @@ async function reactivateCode(id) {
 
   }
 
+}
+
+  async function toggleMaintenanceMode() {
+
+  const response =
+    await fetch(
+      SUPABASE_URL +
+      "/rest/v1/rpc/get_maintenance_mode",
+      {
+        method: "POST",
+
+        headers: {
+          "apikey": SUPABASE_KEY,
+          "Authorization":
+            "Bearer " +
+            window.overseerSession.access_token,
+          "Content-Type":
+            "application/json"
+        },
+
+        body: "{}"
+      }
+    );
+
+  const currentMode =
+    await response.json();
+
+  const enable =
+    !currentMode;
+
+  const action =
+    enable
+      ? "ENABLE"
+      : "DISABLE";
+
+  if (
+    !confirm(
+      `☢ ${action} MAINTENANCE MODE?`
+    )
+  ) {
+    return;
+  }
+
+  const result =
+    await fetch(
+      SUPABASE_URL +
+      "/rest/v1/rpc/set_maintenance_mode",
+      {
+        method: "POST",
+
+        headers: {
+          "apikey": SUPABASE_KEY,
+          "Authorization":
+            "Bearer " +
+            window.overseerSession.access_token,
+          "Content-Type":
+            "application/json"
+        },
+
+        body:
+          JSON.stringify({
+            enabled: enable
+          })
+      }
+    );
+
+  if (!result.ok) {
+
+    const error =
+      await result.text();
+
+    console.error(error);
+
+    alert(
+      "☢ FAILED TO CHANGE MAINTENANCE MODE."
+    );
+
+    return;
+  }
+
+  alert(
+    enable
+      ? "☢ MAINTENANCE MODE ENABLED."
+      : "☢ MAINTENANCE MODE DISABLED."
+  );
 }
   
 </script>
