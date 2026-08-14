@@ -1041,20 +1041,6 @@ async function overseerLogin() {
           method: "POST",
 
           headers: {
-
-            "apikey":
-              SUPABASE_KEY,
-
-            "Authorization":
-              "Bearer " +
-              window.overseerSession.access_token,
-            
-"Content-Type":
-  "application/json"
-
-},
-
-          headers: {
   "apikey": SUPABASE_KEY,
   "Authorization":
     "Bearer " + window.overseerSession.access_token,
