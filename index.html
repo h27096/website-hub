@@ -1101,6 +1101,170 @@ async function overseerLogin() {
 
 }
 
+  function logoutOverseer() {
+
+  window.overseerSession = null;
+
+  location.reload();
+
+}
+
+
+function showAddWebsite() {
+
+  document.getElementById("overseerOutput").innerHTML = `
+
+    <h3>ADD WEBSITE</h3>
+
+    <input
+      id="newSiteName"
+      placeholder="WEBSITE NAME"
+    >
+
+    <input
+      id="newSiteURL"
+      placeholder="https://example.com"
+    >
+
+    <input
+      id="newSiteCategory"
+      placeholder="CATEGORY"
+    >
+
+    <button onclick="addWebsite()">
+      ADD TO DATABASE
+    </button>
+
+  `;
+
+}
+
+
+async function addWebsite() {
+
+  const name =
+    document.getElementById("newSiteName")
+      .value.trim();
+
+  const url =
+    document.getElementById("newSiteURL")
+      .value.trim();
+
+  const category =
+    document.getElementById("newSiteCategory")
+      .value.trim()
+      .toUpperCase();
+
+
+  if (!name || !url || !category) {
+
+    document.getElementById("overseerOutput")
+      .insertAdjacentHTML(
+        "beforeend",
+        "<p>ALL FIELDS REQUIRED.</p>"
+      );
+
+    return;
+
+  }
+
+
+  const response =
+    await fetch(
+      SUPABASE_URL +
+      "/rest/v1/websites",
+      {
+
+        method: "POST",
+
+        headers: {
+
+          "apikey":
+            SUPABASE_KEY,
+
+          "Authorization":
+            "Bearer " +
+            window.overseerSession.access_token,
+
+          "Content-Type":
+            "application/json",
+
+          "Prefer":
+            "return=minimal"
+
+        },
+
+        body:
+          JSON.stringify({
+
+            name: name,
+            url: url,
+            category: category,
+            active: true
+
+          })
+
+      }
+    );
+
+
+  if (response.ok) {
+
+    document.getElementById("overseerOutput")
+      .innerHTML =
+      "☢ WEBSITE ADDED SUCCESSFULLY.";
+
+  }
+
+  else {
+
+    document.getElementById("overseerOutput")
+      .innerHTML =
+      "DATABASE REJECTED REQUEST.";
+
+  }
+
+}
+
+
+function showWebsiteManager() {
+
+  document.getElementById("overseerOutput").innerHTML = `
+
+    <h3>WEBSITE DATABASE</h3>
+
+    <p>
+      WEBSITE MANAGEMENT WILL BE INSTALLED
+      IN THE NEXT MODULE.
+    </p>
+
+  `;
+
+}
+
+
+function showSecretFiles() {
+
+  document.getElementById("overseerOutput").innerHTML = `
+
+    <h3>☢ CLASSIFIED FILES</h3>
+
+    <p>
+      ACCESS LEVEL: OVERSEER
+    </p>
+
+    <p>
+      FILES CURRENTLY ENCRYPTED.
+    </p>
+
+    <p>
+      ████████████████████████
+    </p>
+
+  `;
+
+}
+
 </script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
