@@ -965,6 +965,52 @@ async function overseerLogin() {
 
 }
 
+  function showOverseerPanel() {
+
+  document.getElementById("loginScreen").innerHTML = `
+
+    <div class="login">
+
+      <h1>☢ OVERSEER TERMINAL</h1>
+
+      <p>
+        ROBCO ADMINISTRATIVE CONTROL
+      </p>
+
+      <hr>
+
+      <button onclick="generateGuestCode()">
+        🔑 GENERATE ACCESS CODE
+      </button>
+
+      <button onclick="showAddWebsite()">
+        🌐 ADD WEBSITE
+      </button>
+
+      <button onclick="showWebsiteManager()">
+        📂 MANAGE WEBSITES
+      </button>
+
+      <button onclick="showSecretFiles()">
+        🕵️ SECRET FILES
+      </button>
+
+      <button onclick="logoutOverseer()">
+        🚪 EXIT OVERSEER MODE
+      </button>
+
+      <div
+        id="overseerOutput"
+        class="message"
+        style="margin-top:20px"
+      ></div>
+
+    </div>
+
+  `;
+
+}
+
 </script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
