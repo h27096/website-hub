@@ -1229,15 +1229,14 @@ body: JSON.stringify({
             ).toLocaleString()}
 
             <br>
+LAST USED:
+${
+  code.last_used_at
+    ? new Date(code.last_used_at).toLocaleString()
+    : "NEVER"
+}
 
-            ${
-              code.last_used_at
-                ? "LAST USED: " +
-                  new Date(
-                    code.last_used_at
-                  ).toLocaleString()
-                : "LAST USED: NEVER"
-            }
+<br>
 
             <br>
 
