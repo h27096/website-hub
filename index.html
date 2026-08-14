@@ -1028,7 +1028,7 @@ async function overseerLogin() {
     const response =
       await fetch(
         SUPABASE_URL +
-        "/rest/v1/rpc/generate_access_code",
+        "/rest/v1/rpc/create_access_code",
         {
 
           method: "POST",
@@ -1082,7 +1082,9 @@ async function overseerLogin() {
 
           },
 
-          body: "{}"
+        body: JSON.stringify({
+  request: "generate"
+})
 
         }
       );
