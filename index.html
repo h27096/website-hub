@@ -983,6 +983,10 @@ async function overseerLogin() {
         🔑 GENERATE ACCESS CODE
       </button>
 
+      <button onclick="viewAccessCodes()">
+  📋 VIEW CODES
+</button>
+
       <button onclick="showAddWebsite()">
         🌐 ADD WEBSITE
       </button>
@@ -1045,6 +1049,329 @@ async function overseerLogin() {
 
         }
       );
+
+    async function viewAccessCodes() {
+
+  const output =
+    document.getElementById("overseerOutput");
+
+  output.innerHTML =
+    "LOADING ACCESS CODE DATABASE...";
+
+  try {
+
+    const response =
+      await fetch(
+        SUPABASE_URL +
+        "/rest/v1/rpc/overseer_view_codes",
+        {
+
+          method: "POST",
+
+          headers: {
+
+            "apikey":
+              SUPABASE_KEY,
+
+            "Authorization":
+              "Bearer " +
+              window.overseerSession.access_token,
+
+            "Content-Type":
+              "application/json"
+
+          },
+
+          body: "{}"
+
+        }
+      );
+
+
+    const codes =
+      await response.json();
+
+
+    if (!response.ok) {
+
+      output.textContent =
+        "DATABASE ACCESS FAILED.";
+
+      console.error(codes);
+
+      return;
+
+    }
+
+
+    if (!codes.length) {
+
+      output.innerHTML =
+        "<p>NO ACCESS CODES FOUND.</p>";
+
+      return;
+
+    }
+
+
+    output.innerHTML = `
+
+      <h3>☢ ACCESS CODE DATABASE</h3>
+
+      <div id="codeDatabase"></div>
+
+    `;
+
+
+    const database =
+      document.getElementById(
+        "codeDatabase"
+      );
+
+
+    database.innerHTML =
+      codes.map(code => {
+
+        let status;
+
+        if (code.uses_remaining <= 0) {
+
+          status = "EXPIRED";
+
+        }
+
+        else if (!code.active) {
+
+          status = "DEACTIVATED";
+
+        }
+
+        else {
+
+          status = "ACTIVE";
+
+        }
+
+
+        let action = "";
+
+
+        if (
+          code.uses_remaining > 0 &&
+          code.active
+        ) {
+
+          action = `
+
+            <button
+              onclick="deactivateCode('${code.id}')"
+            >
+              DEACTIVATE
+            </button>
+
+          `;
+
+        }
+
+        else if (
+          code.uses_remaining > 0 &&
+          !code.active
+        ) {
+
+          action = `
+
+            <button
+              onclick="reactivateCode('${code.id}')"
+            >
+              REACTIVATE
+            </button>
+
+          `;
+
+        }
+
+
+        return `
+
+          <div
+            style="
+              border:1px solid #159615;
+              padding:15px;
+              margin:10px 0;
+            "
+          >
+
+            <strong>
+              CODE:
+              ${escapeHTML(
+                code.access_code ||
+                "UNKNOWN / LEGACY CODE"
+              )}
+            </strong>
+
+            <br>
+
+            USES:
+            ${code.uses_remaining}
+
+            <br>
+
+            STATUS:
+            ${status}
+
+            <br>
+
+            CREATED:
+            ${new Date(
+              code.created_at
+            ).toLocaleString()}
+
+            <br>
+
+            ${
+              code.last_used_at
+                ? "LAST USED: " +
+                  new Date(
+                    code.last_used_at
+                  ).toLocaleString()
+                : "LAST USED: NEVER"
+            }
+
+            <br>
+
+            ${action}
+
+          </div>
+
+        `;
+
+      }).join("");
+
+  }
+
+  catch (error) {
+
+    console.error(error);
+
+    output.textContent =
+      "SYSTEM ERROR.";
+
+  }
+
+}
+
+    async function deactivateCode(id) {
+
+  if (!confirm(
+    "DEACTIVATE THIS ACCESS CODE?"
+  )) {
+    return;
+  }
+
+
+  const response =
+    await fetch(
+      SUPABASE_URL +
+      "/rest/v1/rpc/deactivate_access_code",
+      {
+
+        method: "POST",
+
+        headers: {
+
+          "apikey":
+            SUPABASE_KEY,
+
+          "Authorization":
+            "Bearer " +
+            window.overseerSession.access_token,
+
+          "Content-Type":
+            "application/json"
+
+        },
+
+        body:
+          JSON.stringify({
+            code_id: id
+          })
+
+      }
+    );
+
+
+  if (response.ok) {
+
+    viewAccessCodes();
+
+  }
+
+  else {
+
+    alert(
+      "FAILED TO DEACTIVATE CODE."
+    );
+
+  }
+
+}
+
+
+async function reactivateCode(id) {
+
+  if (!confirm(
+    "REACTIVATE THIS ACCESS CODE?"
+  )) {
+    return;
+  }
+
+
+  const response =
+    await fetch(
+      SUPABASE_URL +
+      "/rest/v1/rpc/reactivate_access_code",
+      {
+
+        method: "POST",
+
+        headers: {
+
+          "apikey":
+            SUPABASE_KEY,
+
+          "Authorization":
+            "Bearer " +
+            window.overseerSession.access_token,
+
+          "Content-Type":
+            "application/json"
+
+        },
+
+        body:
+          JSON.stringify({
+            code_id: id
+          })
+
+      }
+    );
+
+
+  if (response.ok) {
+
+    viewAccessCodes();
+
+  }
+
+  else {
+
+    alert(
+      "FAILED TO REACTIVATE CODE."
+    );
+
+  }
+
+}
 
 
     const code =
