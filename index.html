@@ -1592,11 +1592,239 @@ function showSecretFiles() {
 
 }
 
-  function viewAccessCodes() {
-  document.getElementById("overseerOutput").innerHTML =
-    "☢ VIEW CODES SYSTEM ONLINE";
+async function viewAccessCodes() {
+
+  const output =
+    document.getElementById("overseerOutput");
+
+  output.innerHTML =
+    "☢ LOADING ACCESS CODE DATABASE...";
+
+  try {
+
+    const response = await fetch(
+      SUPABASE_URL +
+      "/rest/v1/rpc/overseer_view_codes",
+      {
+        method: "POST",
+
+        headers: {
+          "apikey": SUPABASE_KEY,
+          "Authorization":
+            "Bearer " +
+            window.overseerSession.access_token,
+          "Content-Type": "application/json"
+        },
+
+        body: "{}"
+      }
+    );
+
+    const codes = await response.json();
+
+    if (!response.ok) {
+
+      console.error(codes);
+
+      output.innerHTML =
+        "☢ DATABASE ACCESS FAILED.";
+
+      return;
+    }
+
+    if (!codes.length) {
+
+      output.innerHTML =
+        "☢ NO ACCESS CODES FOUND.";
+
+      return;
+    }
+
+    output.innerHTML = `
+      <h3>☢ ACCESS CODE DATABASE</h3>
+      <div id="codeDatabase"></div>
+    `;
+
+    const database =
+      document.getElementById("codeDatabase");
+
+    codes.forEach(code => {
+
+      let status;
+
+      if (code.uses_remaining <= 0) {
+        status = "EXPIRED";
+      }
+      else if (!code.active) {
+        status = "DEACTIVATED";
+      }
+      else {
+        status = "ACTIVE";
+      }
+
+      const card =
+        document.createElement("div");
+
+      card.style.border =
+        "1px solid #159615";
+
+      card.style.padding =
+        "15px";
+
+      card.style.margin =
+        "10px 0";
+
+      const title =
+        document.createElement("strong");
+
+      title.textContent =
+        "CODE: " +
+        (code.access_code ||
+         "UNKNOWN / LEGACY CODE");
+
+      card.appendChild(title);
+
+      card.appendChild(
+        document.createElement("br")
+      );
+
+      card.appendChild(
+        document.createTextNode(
+          "USES: " +
+          code.uses_remaining
+        )
+      );
+
+      card.appendChild(
+        document.createElement("br")
+      );
+
+      card.appendChild(
+        document.createTextNode(
+          "STATUS: " + status
+        )
+      );
+
+      card.appendChild(
+        document.createElement("br")
+      );
+
+      if (
+        code.uses_remaining > 0 &&
+        code.active
+      ) {
+
+        const button =
+          document.createElement("button");
+
+        button.textContent =
+          "DEACTIVATE";
+
+        button.onclick = () =>
+          deactivateCode(code.id);
+
+        card.appendChild(button);
+
+      }
+      else if (
+        code.uses_remaining > 0 &&
+        !code.active
+      ) {
+
+        const button =
+          document.createElement("button");
+
+        button.textContent =
+          "REACTIVATE";
+
+        button.onclick = () =>
+          reactivateCode(code.id);
+
+        card.appendChild(button);
+      }
+
+      database.appendChild(card);
+
+    });
+
+  }
+
+  catch (error) {
+
+    console.error(error);
+
+    output.innerHTML =
+      "☢ SYSTEM ERROR.";
+
+  }
+
+}
+  
+async function deactivateCode(id) {
+
+  const response = await fetch(
+    SUPABASE_URL +
+    "/rest/v1/rpc/deactivate_access_code",
+    {
+      method: "POST",
+
+      headers: {
+        "apikey": SUPABASE_KEY,
+        "Authorization":
+          "Bearer " +
+          window.overseerSession.access_token,
+        "Content-Type": "application/json"
+      },
+
+      body: JSON.stringify({
+        code_id: id
+      })
+    }
+  );
+
+  if (response.ok) {
+    viewAccessCodes();
+  }
+  else {
+    console.error(await response.text());
+    alert("FAILED TO DEACTIVATE CODE.");
+  }
+
 }
 
+
+async function reactivateCode(id) {
+
+  const response = await fetch(
+    SUPABASE_URL +
+    "/rest/v1/rpc/reactivate_access_code",
+    {
+      method: "POST",
+
+      headers: {
+        "apikey": SUPABASE_KEY,
+        "Authorization":
+          "Bearer " +
+          window.overseerSession.access_token,
+        "Content-Type": "application/json"
+      },
+
+      body: JSON.stringify({
+        code_id: id
+      })
+    }
+  );
+
+  if (response.ok) {
+    viewAccessCodes();
+  }
+  else {
+    console.error(await response.text());
+    alert("FAILED TO REACTIVATE CODE.");
+  }
+
+}
+  
 </script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
