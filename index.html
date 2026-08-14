@@ -1223,23 +1223,23 @@ body: JSON.stringify({
 
             <br>
 
-            CREATED:
-            ${new Date(
-              code.created_at
-            ).toLocaleString()}
-
-            <br>
-LAST USED:
-${
-  code.last_used_at
-    ? new Date(code.last_used_at).toLocaleString()
-    : "NEVER"
-}
+        CREATED:
+${new Date(
+  code.created_at
+).toLocaleString()}
 
 <br>
 
-            <br>
+<div style="margin-top:5px;">
+  LAST USED:
+  ${
+    code.last_used_at
+      ? new Date(code.last_used_at).toLocaleString()
+      : "NEVER"
+  }
+</div>
 
+<br>
             ${action}
 
           </div>
