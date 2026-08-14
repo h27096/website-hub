@@ -373,6 +373,12 @@
         .getElementById("accessCode")
         .value
         .trim();
+    
+    // ☢️ SECRET OVERSEER COMMAND
+if (code.toLowerCase() === "overseer") {
+  showOverseerLogin();
+  return;
+}
 
 
     const message =
@@ -778,6 +784,186 @@
 
       }
     );
+
+  function showOverseerLogin() {
+
+  document.getElementById("loginScreen").innerHTML = `
+    <div class="login">
+
+      <h1>☢ OVERSEER TERMINAL</h1>
+
+      <p>ROBCO ADMINISTRATIVE ACCESS</p>
+
+      <input
+        id="overseerEmail"
+        type="email"
+        placeholder="OVERSEER EMAIL"
+        autocomplete="username"
+      >
+
+      <input
+        id="overseerPassword"
+        type="password"
+        placeholder="OVERSEER PASSWORD"
+        autocomplete="current-password"
+      >
+
+      <button onclick="overseerLogin()">
+        AUTHENTICATE
+      </button>
+
+      <button onclick="location.reload()">
+        RETURN
+      </button>
+
+      <div
+        id="overseerMessage"
+        class="message"
+      ></div>
+
+    </div>
+  `;
+
+}
+
+
+async function overseerLogin() {
+
+  const email =
+    document
+      .getElementById("overseerEmail")
+      .value
+      .trim();
+
+  const password =
+    document
+      .getElementById("overseerPassword")
+      .value;
+
+
+  const message =
+    document
+      .getElementById("overseerMessage");
+
+
+  message.textContent =
+    "AUTHENTICATING OVERSEER...";
+
+
+  try {
+
+    const response =
+      await fetch(
+        SUPABASE_URL +
+        "/auth/v1/token?grant_type=password",
+        {
+
+          method: "POST",
+
+          headers: {
+
+            "apikey":
+              SUPABASE_KEY,
+
+            "Content-Type":
+              "application/json"
+
+          },
+
+          body:
+            JSON.stringify({
+
+              email: email,
+              password: password
+
+            })
+
+        }
+      );
+
+
+    const result =
+      await response.json();
+
+
+    if (!response.ok) {
+
+      message.textContent =
+        "OVERSEER AUTHENTICATION FAILED.";
+
+      return;
+
+    }
+
+
+    // Check that this account is actually
+    // registered as an Overseer.
+
+    const check =
+      await fetch(
+        SUPABASE_URL +
+        "/rest/v1/overseers?user_id=eq." +
+        encodeURIComponent(result.user.id) +
+        "&select=user_id",
+        {
+
+          headers: {
+
+            "apikey":
+              SUPABASE_KEY,
+
+            "Authorization":
+              "Bearer " +
+              result.access_token
+
+          }
+
+        }
+      );
+
+
+    const overseers =
+      await check.json();
+
+
+    if (
+      !check.ok ||
+      !overseers.length
+    ) {
+
+      message.textContent =
+        "ACCESS DENIED: NOT AN OVERSEER.";
+
+      return;
+
+    }
+
+
+    message.textContent =
+      "OVERSEER ACCESS GRANTED.";
+
+
+    // Save the authenticated session.
+
+    window.overseerSession = result;
+
+
+    // Open the Overseer terminal.
+
+    showOverseerPanel();
+
+  }
+
+  catch (error) {
+
+    console.error(error);
+
+    message.textContent =
+      "SYSTEM CONNECTION ERROR.";
+
+  }
+
+}
 
 </script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
