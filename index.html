@@ -1710,6 +1710,23 @@ async function viewAccessCodes() {
         document.createElement("br")
       );
 
+const lastUsed =
+  document.createElement("div");
+
+lastUsed.textContent =
+  "LAST USED: " +
+  (
+    code.last_used_at
+      ? new Date(code.last_used_at).toLocaleString()
+      : "NEVER"
+  );
+
+card.appendChild(lastUsed);
+
+card.appendChild(
+  document.createElement("br")
+);
+      
       if (
         code.uses_remaining > 0 &&
         code.active
