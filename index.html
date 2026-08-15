@@ -1038,6 +1038,16 @@ async function overseerLogin() {
 
 </div>
 
+<div style="margin-top:20px;">
+
+  <h3>☢ EXISTING ANNOUNCEMENTS</h3>
+
+  <div id="announcementList">
+    LOADING ANNOUNCEMENTS...
+  </div>
+
+</div>
+
       <button onclick="showSecretFiles()">
         🕵️ SECRET FILES
       </button>
@@ -2105,6 +2115,114 @@ async function reactivateCode(id) {
   alert(
     "☢ ANNOUNCEMENT CREATED."
   );
+}
+
+  async function loadAnnouncements() {
+
+  const list =
+    document.getElementById(
+      "announcementList"
+    );
+
+  if (!list) return;
+
+  list.innerHTML =
+    "☢ LOADING ANNOUNCEMENTS...";
+
+  const response =
+    await fetch(
+      SUPABASE_URL +
+      "/rest/v1/rpc/overseer_view_announcements",
+      {
+        method: "POST",
+
+        headers: {
+          "apikey": SUPABASE_KEY,
+
+          "Authorization":
+            "Bearer " +
+            window.overseerSession.access_token,
+
+          "Content-Type":
+            "application/json"
+        },
+
+        body: "{}"
+      }
+    );
+
+  if (!response.ok) {
+
+    console.error(
+      await response.text()
+    );
+
+    list.innerHTML =
+      "☢ FAILED TO LOAD ANNOUNCEMENTS.";
+
+    return;
+  }
+
+  const announcements =
+    await response.json();
+
+  list.innerHTML = "";
+
+  if (!announcements.length) {
+
+    list.innerHTML =
+      "☢ NO ANNOUNCEMENTS.";
+
+    return;
+  }
+
+  announcements.forEach(
+    announcement => {
+
+      const card =
+        document.createElement("div");
+
+      card.style.border =
+        "1px solid #159615";
+
+      card.style.padding =
+        "15px";
+
+      card.style.margin =
+        "10px 0";
+
+      card.innerHTML = `
+        <strong>
+          ${announcement.title}
+        </strong>
+
+        <br><br>
+
+        ${announcement.message}
+
+        <br><br>
+
+        STATUS:
+        ${
+          announcement.visible
+            ? "VISIBLE"
+            : "HIDDEN"
+        }
+
+        <br>
+
+        <button
+          onclick="editAnnouncement('${announcement.id}')"
+        >
+          EDIT
+        </button>
+      `;
+
+      list.appendChild(card);
+
+    }
+  );
+
 }
   
 </script>
