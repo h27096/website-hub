@@ -246,7 +246,7 @@
 
   <!-- WEBSITE HUB -->
 
-<section id="dashboard" class="">
+<section id="dashboard" class="hidden">
 
   <div class="dashboard-header">
 
@@ -414,112 +414,95 @@ window.supabaseClient = supabase.createClient(
     ==========================================
   */
 
-  async function login() {
+async function login() {
 
-    const code =
-      document
-        .getElementById("accessCode")
-        .value
-        .trim();
-    
-    // ☢️ SECRET OVERSEER COMMAND
-if (code.toLowerCase() === "overseer") {
-  showOverseerLogin();
-  return;
-}
+  const code =
+    document
+      .getElementById("accessCode")
+      .value
+      .trim();
 
+  // ☢️ SECRET OVERSEER COMMAND
+  if (code.toLowerCase() === "overseer") {
+    showOverseerLogin();
+    return;
+  }
 
-    const message =
-      document
-        .getElementById("loginMessage");
+  const message =
+    document
+      .getElementById("loginMessage");
 
-
-    if (!code) {
-
-      message.textContent =
-        "ENTER AN ACCESS CODE.";
-
-      return;
-
-    }
-
+  if (!code) {
 
     message.textContent =
-      "AUTHENTICATING...";
+      "ENTER AN ACCESS CODE.";
 
+    return;
+  }
 
-    try {
+  message.textContent =
+    "AUTHENTICATING...";
 
-      const response =
-        await databaseRequest(
-          "/rest/v1/rpc/use_access_code",
-          {
+  try {
 
-            method: "POST",
+    const response =
+      await databaseRequest(
+        "/rest/v1/rpc/use_access_code",
+        {
+          method: "POST",
 
-            body:
-              JSON.stringify({
+          body:
+            JSON.stringify({
+              input_code: code
+            })
+        }
+      );
 
-                input_code: code
+    const result =
+      await response.json();
 
-              })
+    if (
+      response.ok &&
+      result.success
+    ) {
 
-          }
-        );
+      message.textContent =
+        "ACCESS GRANTED.";
 
+      document
+        .getElementById("loginScreen")
+        .classList.add("hidden");
 
-      const result =
-        await response.json();
+      document
+        .getElementById("dashboard")
+        .classList.remove("hidden");
 
-
-      if (
-        response.ok &&
-        result.success
-      ) {
-
-        message.textContent =
-          "ACCESS GRANTED.";
-
-        document
-          .getElementById("loginScreen")
-          .classList.add("hidden");
-
-
-        document
-          .getElementById("hub")
-          .classList.remove("hidden");
-
-
-    document
-  .getElementById("dashboard")
-  .classList.remove("hidden");
-
-document
-  .getElementById("hub")
-  .classList.add("hidden");
-      }
-
-      else {
-
-        message.textContent =
-          result.message ||
-          "ACCESS DENIED.";
-
-      }
+      document
+        .getElementById("hub")
+        .classList.add("hidden");
 
     }
 
-    catch (error) {
-
-      console.error(error);
+    else {
 
       message.textContent =
-        "CONNECTION ERROR.";
+        result.message ||
+        "ACCESS DENIED.";
 
     }
 
   }
 
+  catch (error) {
+
+    console.error(error);
+
+    message.textContent =
+      "CONNECTION ERROR.";
+
+  }
+
+}
 
   /*
     ==========================================
