@@ -1022,6 +1022,47 @@ async function overseerLogin() {
 
 </div>
 
+<div style="margin-top:20px;">
+
+  <button onclick="toggleCreateAnnouncement()">
+    📢 CREATE ANNOUNCEMENT
+  </button>
+
+  <div
+    id="createAnnouncementPanel"
+    style="display:none; margin-top:15px;"
+  >
+
+    <input
+      id="announcementTitle"
+      type="text"
+      placeholder="ANNOUNCEMENT TITLE"
+    >
+
+    <textarea
+      id="announcementMessage"
+      placeholder="ANNOUNCEMENT MESSAGE"
+      style="
+        width:100%;
+        min-height:120px;
+        margin-top:10px;
+        background:#010401;
+        border:1px solid #55ff55;
+        color:#55ff55;
+        font-family:inherit;
+        padding:14px;
+        resize:vertical;
+      "
+    ></textarea>
+
+    <button onclick="createAnnouncement()">
+      SAVE ANNOUNCEMENT
+    </button>
+
+  </div>
+
+</div>
+
       <button onclick="showSecretFiles()">
         🕵️ SECRET FILES
       </button>
@@ -2333,6 +2374,24 @@ async function reactivateCode(id) {
 
     list.style.display = "none";
 
+  }
+
+}
+
+  function toggleCreateAnnouncement() {
+
+  const panel =
+    document.getElementById(
+      "createAnnouncementPanel"
+    );
+
+  if (!panel) return;
+
+  if (panel.style.display === "none") {
+    panel.style.display = "block";
+  }
+  else {
+    panel.style.display = "none";
   }
 
 }
