@@ -1618,17 +1618,64 @@ function showWebsiteManager() {
 
   document.getElementById("overseerOutput").innerHTML = `
 
-    <h3>WEBSITE DATABASE</h3>
+    <h3>☢ WEBSITE DATABASE</h3>
 
-    <p>
-      WEBSITE MANAGEMENT WILL BE INSTALLED
-      IN THE NEXT MODULE.
-    </p>
+    <button onclick="toggleAddWebsite()">
+      ➕ ADD WEBSITE
+    </button>
+
+    <div
+      id="addWebsitePanel"
+      style="display:none; margin-top:15px;"
+    >
+
+      <input
+        id="websiteName"
+        type="text"
+        placeholder="WEBSITE NAME"
+      >
+
+      <input
+        id="websiteURL"
+        type="text"
+        placeholder="WEBSITE URL"
+        style="margin-top:10px;"
+      >
+
+      <textarea
+        id="websiteDescription"
+        placeholder="WEBSITE DESCRIPTION"
+        style="
+          width:100%;
+          min-height:100px;
+          margin-top:10px;
+          background:#010401;
+          border:1px solid #55ff55;
+          color:#55ff55;
+          font-family:inherit;
+          padding:14px;
+          resize:vertical;
+        "
+      ></textarea>
+
+      <button onclick="createManagedWebsite()">
+        SAVE WEBSITE
+      </button>
+
+    </div>
+
+    <div
+      id="managedWebsiteList"
+      style="margin-top:20px;"
+    >
+      ☢ LOADING WEBSITES...
+    </div>
 
   `;
 
-}
+  loadManagedWebsites();
 
+}
 
 function showSecretFiles() {
 
@@ -2391,6 +2438,140 @@ async function reactivateCode(id) {
   else {
     panel.style.display = "none";
   }
+
+}
+
+  function toggleAddWebsite() {
+
+  const panel =
+    document.getElementById(
+      "addWebsitePanel"
+    );
+
+  if (!panel) return;
+
+  if (panel.style.display === "none") {
+    panel.style.display = "block";
+  }
+  else {
+    panel.style.display = "none";
+  }
+
+}
+
+  async function loadManagedWebsites() {
+
+  const list =
+    document.getElementById(
+      "managedWebsiteList"
+    );
+
+  if (!list) return;
+
+  list.innerHTML =
+    "☢ LOADING WEBSITES...";
+
+  const response =
+    await fetch(
+      SUPABASE_URL +
+      "/rest/v1/rpc/overseer_view_websites",
+      {
+        method: "POST",
+
+        headers: {
+          "apikey": SUPABASE_KEY,
+
+          "Authorization":
+            "Bearer " +
+            window.overseerSession.access_token,
+
+          "Content-Type":
+            "application/json"
+        },
+
+        body: "{}"
+      }
+    );
+
+  if (!response.ok) {
+
+    console.error(
+      await response.text()
+    );
+
+    list.innerHTML =
+      "☢ FAILED TO LOAD WEBSITES.";
+
+    return;
+  }
+
+  const websites =
+    await response.json();
+
+  list.innerHTML = "";
+
+  if (!websites.length) {
+
+    list.innerHTML =
+      "☢ NO WEBSITES FOUND.";
+
+    return;
+  }
+
+  websites.forEach(
+    website => {
+
+      const card =
+        document.createElement("div");
+
+      card.style.border =
+        "1px solid #159615";
+
+      card.style.padding =
+        "15px";
+
+      card.style.margin =
+        "10px 0";
+
+      card.innerHTML = `
+        <strong>
+          ${website.name}
+        </strong>
+
+        <br><br>
+
+        URL:
+        ${website.url}
+
+        <br>
+
+        DESCRIPTION:
+        ${website.description || "NONE"}
+
+        <br>
+
+        STATUS:
+        ${
+          website.enabled
+            ? "🟢 ENABLED"
+            : "🔴 DISABLED"
+        }
+
+        <br><br>
+
+        <button>
+          EDIT
+        </button>
+
+        <button>
+          DELETE
+        </button>
+      `;
+
+      list.appendChild(card);
+
+    }
+  );
 
 }
   
