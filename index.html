@@ -246,6 +246,46 @@
 
   <!-- WEBSITE HUB -->
 
+<section id="dashboard" class="">
+
+  <div class="dashboard-header">
+
+    <h2>☢ ROBCO INDUSTRIES</h2>
+
+    <p>USER TERMINAL // ACCESS GRANTED</p>
+
+  </div>
+
+  <div class="dashboard-grid">
+
+    <button onclick="showUserPage('websites')">
+      🌐 WEBSITE HUB
+    </button>
+
+    <button onclick="showUserPage('announcements')">
+      📢 ANNOUNCEMENTS
+    </button>
+
+    <button onclick="showUserPage('holotapes')">
+      📼 HOLOTAPES
+    </button>
+
+    <button onclick="showUserPage('radio')">
+      📻 RADIO
+    </button>
+
+    <button onclick="showUserPage('games')">
+      🎮 MINI-GAMES
+    </button>
+
+    <button onclick="showUserPage('files')">
+      📁 ROBCO FILES
+    </button>
+
+  </div>
+
+</section>
+  
   <section
     id="hub"
     class="hidden"
@@ -450,9 +490,13 @@ if (code.toLowerCase() === "overseer") {
           .classList.remove("hidden");
 
 
-       loadWebsites();
-loadUserAnnouncements();
+    document
+  .getElementById("dashboard")
+  .classList.remove("hidden");
 
+document
+  .getElementById("hub")
+  .classList.add("hidden");
       }
 
       else {
@@ -3104,6 +3148,79 @@ async function reactivateCode(id) {
     );
 
   }
+
+}
+
+  function showUserPage(page) {
+
+  const dashboard =
+    document.getElementById("dashboard");
+
+  const hub =
+    document.getElementById("hub");
+
+  if (page === "dashboard") {
+
+    dashboard.classList.remove("hidden");
+    hub.classList.add("hidden");
+
+    return;
+
+  }
+
+
+  if (page === "websites") {
+
+    dashboard.classList.add("hidden");
+    hub.classList.remove("hidden");
+
+    loadWebsites();
+
+    return;
+
+  }
+
+
+  if (page === "announcements") {
+
+    dashboard.classList.add("hidden");
+    hub.classList.remove("hidden");
+
+    document
+      .getElementById("sites")
+      .innerHTML = "";
+
+    document
+      .getElementById("userAnnouncements")
+      .scrollIntoView({
+        behavior: "smooth"
+      });
+
+    loadUserAnnouncements();
+
+    return;
+
+  }
+
+
+  // Placeholder pages for V1 modules
+
+  dashboard.classList.add("hidden");
+  hub.classList.remove("hidden");
+
+  document
+    .getElementById("sites")
+    .innerHTML = `
+      <div class="site">
+        <div class="site-name">
+          MODULE UNDER CONSTRUCTION
+        </div>
+
+        <div class="site-category">
+          ROBCO DEVELOPMENT
+        </div>
+      </div>
+    `;
 
 }
   
