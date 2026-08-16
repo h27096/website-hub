@@ -343,6 +343,53 @@
 
 </div>
 
+  <section
+  id="holotapes"
+  class="hidden"
+>
+
+  <button
+    class="back-button"
+    onclick="showUserPage('dashboard')"
+  >
+    ← BACK TO DASHBOARD
+  </button>
+
+  <div class="holotape-header">
+
+    <h2>📼 HOLOTAPE LIBRARY</h2>
+
+    <p>
+      ROBCO ARCHIVE // AUTHORIZED USER ACCESS
+    </p>
+
+  </div>
+
+  <div id="holotapeList">
+
+    <div class="site">
+      <div class="site-name">
+        HOLOTAPE 001
+      </div>
+
+      <div class="site-category">
+        VAULT 111 // OVERSEER LOG
+      </div>
+    </div>
+
+    <div class="site">
+      <div class="site-name">
+        HOLOTAPE 002
+      </div>
+
+      <div class="site-category">
+        CLASSIFIED // INCIDENT REPORT
+      </div>
+    </div>
+
+  </div>
+
+</section>
 
 <script>
 
@@ -3192,6 +3239,18 @@ async function reactivateCode(id) {
 
   }
 
+    if (page === "holotapes") {
+
+  dashboard.classList.add("hidden");
+  hub.classList.add("hidden");
+
+  document
+    .getElementById("holotapes")
+    .classList.remove("hidden");
+
+  return;
+
+}
 
   // Placeholder pages for V1 modules
 
