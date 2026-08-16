@@ -2301,11 +2301,17 @@ async function reactivateCode(id) {
 
         <br>
 
-        <button
-          onclick="editAnnouncement('${announcement.id}')"
-        >
-          EDIT
-        </button>
+   <button
+  onclick="editAnnouncement('${announcement.id}')"
+>
+  EDIT
+</button>
+
+<button
+  onclick="deleteAnnouncement('${announcement.id}')"
+>
+  DELETE
+</button>
       `;
 
       list.appendChild(card);
