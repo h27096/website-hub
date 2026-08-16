@@ -2559,9 +2559,11 @@ async function reactivateCode(id) {
 
         <br><br>
 
-        <button>
-          EDIT
-        </button>
+       <button
+  onclick="editManagedWebsite('${website.id}')"
+>
+  EDIT
+</button>
 
         <button>
           DELETE
@@ -2659,6 +2661,129 @@ async function reactivateCode(id) {
 
   alert(
     "☢ WEBSITE CREATED."
+  );
+
+  loadManagedWebsites();
+
+}
+
+  async function editManagedWebsite(id) {
+
+  const response =
+    await fetch(
+      SUPABASE_URL +
+      "/rest/v1/rpc/overseer_view_websites",
+      {
+        method: "POST",
+
+        headers: {
+          "apikey": SUPABASE_KEY,
+
+          "Authorization":
+            "Bearer " +
+            window.overseerSession.access_token,
+
+          "Content-Type":
+            "application/json"
+        },
+
+        body: "{}"
+      }
+    );
+
+  if (!response.ok) {
+
+    alert(
+      "☢ FAILED TO LOAD WEBSITE."
+    );
+
+    return;
+  }
+
+  const websites =
+    await response.json();
+
+  const website =
+    websites.find(
+      item => item.id === id
+    );
+
+  if (!website) {
+
+    alert(
+      "☢ WEBSITE NOT FOUND."
+    );
+
+    return;
+  }
+
+  const newName =
+    prompt(
+      "EDIT WEBSITE NAME:",
+      website.name
+    );
+
+  if (newName === null) return;
+
+  const newURL =
+    prompt(
+      "EDIT WEBSITE URL:",
+      website.url
+    );
+
+  if (newURL === null) return;
+
+  const newDescription =
+    prompt(
+      "EDIT WEBSITE DESCRIPTION:",
+      website.description || ""
+    );
+
+  if (newDescription === null) return;
+
+  const update =
+    await fetch(
+      SUPABASE_URL +
+      "/rest/v1/rpc/edit_managed_website",
+      {
+        method: "POST",
+
+        headers: {
+          "apikey": SUPABASE_KEY,
+
+          "Authorization":
+            "Bearer " +
+            window.overseerSession.access_token,
+
+          "Content-Type":
+            "application/json"
+        },
+
+        body:
+          JSON.stringify({
+            website_id: id,
+            new_name: newName,
+            new_url: newURL,
+            new_description: newDescription
+          })
+      }
+    );
+
+  if (!update.ok) {
+
+    console.error(
+      await update.text()
+    );
+
+    alert(
+      "☢ FAILED TO EDIT WEBSITE."
+    );
+
+    return;
+  }
+
+  alert(
+    "☢ WEBSITE UPDATED."
   );
 
   loadManagedWebsites();
