@@ -2574,6 +2574,96 @@ async function reactivateCode(id) {
   );
 
 }
+
+  async function createManagedWebsite() {
+
+  const name =
+    document
+      .getElementById("websiteName")
+      .value
+      .trim();
+
+  const url =
+    document
+      .getElementById("websiteURL")
+      .value
+      .trim();
+
+  const description =
+    document
+      .getElementById("websiteDescription")
+      .value
+      .trim();
+
+  if (!name || !url) {
+
+    alert(
+      "☢ WEBSITE NAME AND URL ARE REQUIRED."
+    );
+
+    return;
+  }
+
+  const response =
+    await fetch(
+      SUPABASE_URL +
+      "/rest/v1/rpc/create_managed_website",
+      {
+        method: "POST",
+
+        headers: {
+          "apikey": SUPABASE_KEY,
+
+          "Authorization":
+            "Bearer " +
+            window.overseerSession.access_token,
+
+          "Content-Type":
+            "application/json"
+        },
+
+        body:
+          JSON.stringify({
+            website_name: name,
+            website_url: url,
+            website_description: description
+          })
+      }
+    );
+
+  if (!response.ok) {
+
+    const error =
+      await response.text();
+
+    console.error(error);
+
+    alert(
+      "☢ FAILED TO CREATE WEBSITE."
+    );
+
+    return;
+  }
+
+  document
+    .getElementById("websiteName")
+    .value = "";
+
+  document
+    .getElementById("websiteURL")
+    .value = "";
+
+  document
+    .getElementById("websiteDescription")
+    .value = "";
+
+  alert(
+    "☢ WEBSITE CREATED."
+  );
+
+  loadManagedWebsites();
+
+}
   
 </script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
