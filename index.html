@@ -275,11 +275,12 @@
     ></div>
 
 
-    <div
-      id="sites"
-      class="sites"
-    ></div>
+   <div id="userAnnouncements"></div>
 
+<div
+  id="sites"
+  class="sites"
+></div>
 
     <div class="footer">
 
@@ -449,7 +450,8 @@ if (code.toLowerCase() === "overseer") {
           .classList.remove("hidden");
 
 
-        loadWebsites();
+       loadWebsites();
+loadUserAnnouncements();
 
       }
 
@@ -2948,6 +2950,89 @@ async function reactivateCode(id) {
   }
 
   loadManagedWebsites();
+
+}
+
+  async function loadUserAnnouncements() {
+
+  const container =
+    document.getElementById(
+      "userAnnouncements"
+    );
+
+  if (!container) return;
+
+  try {
+
+    const response =
+      await databaseRequest(
+        "/rest/v1/rpc/get_visible_announcements",
+        {
+          method: "POST"
+        }
+      );
+
+    if (!response.ok) {
+
+      console.error(
+        await response.text()
+      );
+
+      container.innerHTML = "";
+
+      return;
+    }
+
+    const announcements =
+      await response.json();
+
+    container.innerHTML = "";
+
+    if (!announcements.length) {
+      return;
+    }
+
+    announcements.forEach(
+      announcement => {
+
+        const card =
+          document.createElement("div");
+
+        card.style.border =
+          "1px solid #159615";
+
+        card.style.padding =
+          "15px";
+
+        card.style.margin =
+          "10px 0";
+
+        card.innerHTML = `
+          <strong>
+            ☢ ${escapeHTML(
+              announcement.title
+            )}
+          </strong>
+
+          <br><br>
+
+          ${escapeHTML(
+            announcement.message
+          )}
+        `;
+
+        container.appendChild(card);
+
+      }
+    );
+
+  }
+
+  catch (error) {
+
+    console.error(error);
+
+  }
 
 }
   
