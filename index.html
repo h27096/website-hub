@@ -1008,42 +1008,16 @@ async function overseerLogin() {
 
 <div style="margin-top:20px;">
 
-  <h3>📢 ANNOUNCEMENTS</h3>
+  <h3>☢ ANNOUNCEMENT MANAGEMENT</h3>
 
-  <input
-    id="announcementTitle"
-    type="text"
-    placeholder="ANNOUNCEMENT TITLE"
-  >
-
-  <textarea
-    id="announcementMessage"
-    placeholder="ANNOUNCEMENT MESSAGE"
-    style="
-      width:100%;
-      min-height:120px;
-      margin-top:10px;
-      background:#010401;
-      border:1px solid #55ff55;
-      color:#55ff55;
-      font-family:inherit;
-      padding:14px;
-      resize:vertical;
-    "
-  ></textarea>
-
-  <button onclick="createAnnouncement()">
-    CREATE ANNOUNCEMENT
+  <button onclick="toggleAnnouncementManager()">
+    📢 VIEW ANNOUNCEMENTS
   </button>
 
-</div>
-
-<div style="margin-top:20px;">
-
-  <h3>☢ EXISTING ANNOUNCEMENTS</h3>
-
-  <div id="announcementList">
-    LOADING ANNOUNCEMENTS...
+  <div
+    id="announcementList"
+    style="display:none; margin-top:15px;"
+  >
   </div>
 
 </div>
@@ -2336,6 +2310,30 @@ async function reactivateCode(id) {
   );
 
   loadAnnouncements();
+
+}
+
+  function toggleAnnouncementManager() {
+
+  const list =
+    document.getElementById(
+      "announcementList"
+    );
+
+  if (!list) return;
+
+  if (list.style.display === "none") {
+
+    list.style.display = "block";
+
+    loadAnnouncements();
+
+  }
+  else {
+
+    list.style.display = "none";
+
+  }
 
 }
   
