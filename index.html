@@ -502,24 +502,24 @@ if (code.toLowerCase() === "overseer") {
       await response.json();
 
 
-    const managedResponse =
-      await databaseRequest(
-        "/rest/v1/managed_websites?enabled=eq.true&select=id,name,url,description&order=name"
-      );
-
-
-    if (!managedResponse.ok) {
-
-      throw new Error(
-        "Managed website request failed"
-      );
-
+  const managedResponse =
+  await databaseRequest(
+    "/rest/v1/rpc/get_enabled_managed_websites",
+    {
+      method: "POST"
     }
+  );
 
+if (!managedResponse.ok) {
 
-    const managedWebsites =
-      await managedResponse.json();
+  throw new Error(
+    "Managed website request failed"
+  );
 
+}
+
+const managedWebsites =
+  await managedResponse.json();
 
     const convertedManagedWebsites =
       managedWebsites.map(site => ({
