@@ -481,47 +481,79 @@ if (code.toLowerCase() === "overseer") {
     ==========================================
   */
 
-  async function loadWebsites() {
+ async function loadWebsites() {
 
-    try {
+  try {
 
-      const response =
-        await databaseRequest(
-          "/rest/v1/websites?active=eq.true&select=id,name,url,category&order=name"
-        );
+    const response =
+      await databaseRequest(
+        "/rest/v1/websites?active=eq.true&select=id,name,url,category&order=name"
+      );
 
+    if (!response.ok) {
 
-      if (!response.ok) {
-
-        throw new Error(
-          "Database request failed"
-        );
-
-      }
-
-
-      websites =
-        await response.json();
-
-
-      renderCategories();
-
-      renderSites();
+      throw new Error(
+        "Database request failed"
+      );
 
     }
 
-    catch (error) {
+    const existingWebsites =
+      await response.json();
 
-      console.error(error);
 
-      document
-        .getElementById("sites")
-        .innerHTML =
-        "<p>DATABASE CONNECTION ERROR.</p>";
+    const managedResponse =
+      await databaseRequest(
+        "/rest/v1/managed_websites?enabled=eq.true&select=id,name,url,description&order=name"
+      );
+
+
+    if (!managedResponse.ok) {
+
+      throw new Error(
+        "Managed website request failed"
+      );
 
     }
+
+
+    const managedWebsites =
+      await managedResponse.json();
+
+
+    const convertedManagedWebsites =
+      managedWebsites.map(site => ({
+        id: site.id,
+        name: site.name,
+        url: site.url,
+        category: "MISC"
+      }));
+
+
+    websites = [
+      ...existingWebsites,
+      ...convertedManagedWebsites
+    ];
+
+
+    renderCategories();
+
+    renderSites();
 
   }
+
+  catch (error) {
+
+    console.error(error);
+
+    document
+      .getElementById("sites")
+      .innerHTML =
+      "<p>DATABASE CONNECTION ERROR.</p>";
+
+  }
+
+}
 
 
   /*
