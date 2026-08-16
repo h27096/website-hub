@@ -2224,6 +2224,120 @@ async function reactivateCode(id) {
   );
 
 }
+
+  async function editAnnouncement(id) {
+
+  const response =
+    await fetch(
+      SUPABASE_URL +
+      "/rest/v1/rpc/overseer_view_announcements",
+      {
+        method: "POST",
+
+        headers: {
+          "apikey": SUPABASE_KEY,
+
+          "Authorization":
+            "Bearer " +
+            window.overseerSession.access_token,
+
+          "Content-Type":
+            "application/json"
+        },
+
+        body: "{}"
+      }
+    );
+
+  if (!response.ok) {
+
+    alert(
+      "☢ FAILED TO LOAD ANNOUNCEMENT."
+    );
+
+    return;
+  }
+
+  const announcements =
+    await response.json();
+
+  const announcement =
+    announcements.find(
+      item => item.id === id
+    );
+
+  if (!announcement) {
+
+    alert(
+      "☢ ANNOUNCEMENT NOT FOUND."
+    );
+
+    return;
+  }
+
+  const newTitle =
+    prompt(
+      "EDIT ANNOUNCEMENT TITLE:",
+      announcement.title
+    );
+
+  if (newTitle === null) return;
+
+  const newMessage =
+    prompt(
+      "EDIT ANNOUNCEMENT MESSAGE:",
+      announcement.message
+    );
+
+  if (newMessage === null) return;
+
+  const update =
+    await fetch(
+      SUPABASE_URL +
+      "/rest/v1/rpc/edit_announcement",
+      {
+        method: "POST",
+
+        headers: {
+          "apikey": SUPABASE_KEY,
+
+          "Authorization":
+            "Bearer " +
+            window.overseerSession.access_token,
+
+          "Content-Type":
+            "application/json"
+        },
+
+        body:
+          JSON.stringify({
+            announcement_id: id,
+            new_title: newTitle,
+            new_message: newMessage
+          })
+      }
+    );
+
+  if (!update.ok) {
+
+    console.error(
+      await update.text()
+    );
+
+    alert(
+      "☢ FAILED TO EDIT ANNOUNCEMENT."
+    );
+
+    return;
+  }
+
+  alert(
+    "☢ ANNOUNCEMENT UPDATED."
+  );
+
+  loadAnnouncements();
+
+}
   
 </script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
