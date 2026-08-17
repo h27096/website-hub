@@ -3200,6 +3200,11 @@ async function reactivateCode(id) {
   const hub =
     document.getElementById("hub");
 
+    const holotapes =
+  document.getElementById("holotapes");
+
+    holotapes.classList.add("hidden");
+
   if (page === "dashboard") {
 
     dashboard.classList.remove("hidden");
