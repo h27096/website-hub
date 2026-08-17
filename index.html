@@ -284,6 +284,10 @@
 
   </div>
 
+<button onclick="returnToOverseer()">
+  ☢ RETURN TO OVERSEER
+</button>
+  
 </section>
   
 <section
@@ -3290,6 +3294,24 @@ async function reactivateCode(id) {
   document
     .getElementById("hub")
     .classList.add("hidden");
+
+}
+
+  function returnToOverseer() {
+
+  document
+    .getElementById("dashboard")
+    .classList.add("hidden");
+
+  document
+    .getElementById("hub")
+    .classList.add("hidden");
+
+  document
+    .getElementById("holotapes")
+    .classList.add("hidden");
+
+  showOverseerPanel();
 
 }
   
