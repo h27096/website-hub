@@ -1113,6 +1113,10 @@ async function overseerLogin() {
         📂 MANAGE WEBSITES
       </button>
 
+      <button onclick="openUserWebsite()">
+  🌐 OPEN USER SIDE
+</button>
+
       <button onclick="toggleMaintenanceMode()">
   ☢ MAINTENANCE MODE
 </button>
@@ -3270,6 +3274,22 @@ async function reactivateCode(id) {
         </div>
       </div>
     `;
+
+}
+
+  function openUserSide() {
+
+  document
+    .getElementById("loginScreen")
+    .classList.add("hidden");
+
+  document
+    .getElementById("dashboard")
+    .classList.remove("hidden");
+
+  document
+    .getElementById("hub")
+    .classList.add("hidden");
 
 }
   
