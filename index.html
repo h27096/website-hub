@@ -3324,7 +3324,7 @@ function openUserSide() {
 
 }
 
-  function returnToOverseer() {
+function returnToOverseer() {
 
   document
     .getElementById("dashboard")
@@ -3337,6 +3337,10 @@ function openUserSide() {
   document
     .getElementById("holotapes")
     .classList.add("hidden");
+
+  document
+    .getElementById("loginScreen")
+    .classList.remove("hidden");
 
   showOverseerPanel();
 
