@@ -3243,7 +3243,7 @@ async function reactivateCode(id) {
 
   }
 
-    if (page === "holotapes") {
+if (page === "holotapes") {
 
   dashboard.classList.add("hidden");
   hub.classList.add("hidden");
@@ -3256,6 +3256,18 @@ async function reactivateCode(id) {
 
 }
 
+    if (page === "dashboard") {
+
+  document
+    .getElementById("holotapes")
+    .classList.add("hidden");
+
+  dashboard.classList.remove("hidden");
+  hub.classList.add("hidden");
+
+  return;
+}
+    
   // Placeholder pages for V1 modules
 
   dashboard.classList.add("hidden");
