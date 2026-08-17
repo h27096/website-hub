@@ -284,10 +284,6 @@
 
   </div>
 
-<button onclick="returnToOverseer()">
-  ☢ RETURN TO OVERSEER
-</button>
-  
 </section>
   
 <section
@@ -3281,7 +3277,7 @@ async function reactivateCode(id) {
 
 }
 
-  function openUserSide() {
+function openUserSide() {
 
   document
     .getElementById("loginScreen")
@@ -3294,6 +3290,37 @@ async function reactivateCode(id) {
   document
     .getElementById("hub")
     .classList.add("hidden");
+
+  document
+    .getElementById("holotapes")
+    .classList.add("hidden");
+
+  const dashboard =
+    document.getElementById("dashboard");
+
+  let button =
+    document.getElementById("returnOverseerButton");
+
+  if (!button) {
+
+    button =
+      document.createElement("button");
+
+    button.id =
+      "returnOverseerButton";
+
+    button.textContent =
+      "☢ RETURN TO OVERSEER";
+
+    button.onclick =
+      returnToOverseer;
+
+    button.style.marginTop =
+      "20px";
+
+    dashboard.appendChild(button);
+
+  }
 
 }
 
