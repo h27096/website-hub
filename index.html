@@ -234,6 +234,10 @@
     <button onclick="login()">
       AUTHENTICATE
     </button>
+
+    <button onclick="showEmployeeLogin()">
+  👤 EMPLOYEE ACCESS
+</button>
     
 
     <div
@@ -906,6 +910,285 @@ const managedWebsites =
 
       }
     );
+
+  function showEmployeeLogin() {
+
+  document.getElementById("loginScreen").innerHTML = `
+
+    <div class="login">
+
+      <h1>☢ EMPLOYEE TERMINAL</h1>
+
+      <p>
+        WEBSITE MANAGEMENT ACCESS
+      </p>
+
+      <input
+        id="employeePassword"
+        type="password"
+        placeholder="EMPLOYEE PASSWORD"
+        autocomplete="off"
+      >
+
+      <button onclick="employeeLogin()">
+        AUTHENTICATE
+      </button>
+
+      <button onclick="location.reload()">
+        RETURN
+      </button>
+
+      <div
+        id="employeeMessage"
+        class="message"
+      ></div>
+
+    </div>
+
+  `;
+
+}
+
+
+async function employeeLogin() {
+
+  const password =
+    document
+      .getElementById("employeePassword")
+      .value;
+
+  const message =
+    document
+      .getElementById("employeeMessage");
+
+  if (!password) {
+
+    message.textContent =
+      "ENTER EMPLOYEE PASSWORD.";
+
+    return;
+
+  }
+
+  message.textContent =
+    "AUTHENTICATING EMPLOYEE...";
+
+  try {
+
+    const response =
+      await databaseRequest(
+        "/rest/v1/rpc/employee_login",
+        {
+          method: "POST",
+
+          body:
+            JSON.stringify({
+              employee_password: password
+            })
+        }
+      );
+
+    const result =
+      await response.json();
+
+    if (!response.ok || !result) {
+
+      message.textContent =
+        "EMPLOYEE ACCESS DENIED.";
+
+      return;
+
+    }
+
+    window.employeePassword =
+      password;
+
+    showEmployeePanel();
+
+  }
+
+  catch (error) {
+
+    console.error(error);
+
+    message.textContent =
+      "SYSTEM CONNECTION ERROR.";
+
+  }
+
+}
+
+  function showEmployeePanel() {
+
+  document.getElementById("loginScreen").innerHTML = `
+
+    <div class="login">
+
+      <h1>☢ EMPLOYEE TERMINAL</h1>
+
+      <p>
+        WEBSITE SUBMISSION SYSTEM
+      </p>
+
+      <hr>
+
+      <h3>ADD WEBSITE</h3>
+
+      <input
+        id="employeeWebsiteName"
+        type="text"
+        placeholder="WEBSITE NAME"
+      >
+
+      <input
+        id="employeeWebsiteURL"
+        type="text"
+        placeholder="https://example.com"
+      >
+
+      <textarea
+        id="employeeWebsiteDescription"
+        placeholder="WEBSITE DESCRIPTION"
+        style="
+          width:100%;
+          min-height:100px;
+          margin-top:10px;
+          background:#010401;
+          border:1px solid #55ff55;
+          color:#55ff55;
+          font-family:inherit;
+          padding:14px;
+          resize:vertical;
+        "
+      ></textarea>
+
+      <button onclick="employeeAddWebsite()">
+        ➕ ADD WEBSITE
+      </button>
+
+      <button onclick="employeeLogout()">
+        🚪 EXIT EMPLOYEE MODE
+      </button>
+
+      <div
+        id="employeeOutput"
+        class="message"
+        style="margin-top:20px;"
+      ></div>
+
+    </div>
+
+  `;
+
+}
+
+  async function employeeAddWebsite() {
+
+  const name =
+    document
+      .getElementById("employeeWebsiteName")
+      .value
+      .trim();
+
+  const url =
+    document
+      .getElementById("employeeWebsiteURL")
+      .value
+      .trim();
+
+  const description =
+    document
+      .getElementById("employeeWebsiteDescription")
+      .value
+      .trim();
+
+  const output =
+    document
+      .getElementById("employeeOutput");
+
+  if (!name || !url) {
+
+    output.textContent =
+      "☢ WEBSITE NAME AND URL ARE REQUIRED.";
+
+    return;
+
+  }
+
+  try {
+
+    const response =
+      await databaseRequest(
+        "/rest/v1/rpc/employee_add_website",
+        {
+          method: "POST",
+
+          body:
+            JSON.stringify({
+              employee_password:
+                window.employeePassword,
+
+              website_name:
+                name,
+
+              website_url:
+                url,
+
+              website_description:
+                description
+            })
+        }
+      );
+
+    const result =
+      await response.json();
+
+    if (!response.ok || !result) {
+
+      output.textContent =
+        "☢ WEBSITE SUBMISSION FAILED.";
+
+      console.error(result);
+
+      return;
+
+    }
+
+    output.textContent =
+      "☢ WEBSITE ADDED SUCCESSFULLY.";
+
+    document
+      .getElementById("employeeWebsiteName")
+      .value = "";
+
+    document
+      .getElementById("employeeWebsiteURL")
+      .value = "";
+
+    document
+      .getElementById("employeeWebsiteDescription")
+      .value = "";
+
+  }
+
+  catch (error) {
+
+    console.error(error);
+
+    output.textContent =
+      "☢ DATABASE CONNECTION ERROR.";
+
+  }
+
+}
+
+  function employeeLogout() {
+
+  window.employeePassword = null;
+
+  location.reload();
+
+}
 
   function showOverseerLogin() {
 
