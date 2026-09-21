@@ -1032,7 +1032,8 @@ async function employeeLogin() {
 
       <hr>
 
-      <h3>ADD WEBSITE</h3>
+      <h3>REQUEST WEBSITE</h3>
+      <p>SUBMISSIONS REQUIRE OVERSEER APPROVAL BEFORE PUBLICATION.</p>
 
       <input
         id="employeeWebsiteName"
@@ -1063,7 +1064,7 @@ async function employeeLogin() {
       ></textarea>
 
       <button onclick="employeeAddWebsite()">
-        ➕ ADD WEBSITE
+        ➕ SUBMIT REQUEST
       </button>
 
       <button onclick="employeeLogout()">
@@ -1106,10 +1107,10 @@ async function employeeLogin() {
     document
       .getElementById("employeeOutput");
 
-  if (!name || !url) {
+  if (!name || !url || !/^https?:\/\/[^\s]+$/i.test(url)) {
 
     output.textContent =
-      "☢ WEBSITE NAME AND URL ARE REQUIRED.";
+      "☢ ENTER A NAME AND VALID HTTP(S) URL.";
 
     return;
 
@@ -1119,7 +1120,7 @@ async function employeeLogin() {
 
     const response =
       await databaseRequest(
-        "/rest/v1/rpc/employee_add_website",
+        "/rest/v1/rpc/submit_website_request",
         {
           method: "POST",
 
@@ -1146,7 +1147,7 @@ async function employeeLogin() {
     if (!response.ok || !result) {
 
       output.textContent =
-        "☢ WEBSITE SUBMISSION FAILED.";
+        "☢ REQUEST FAILED. CONTACT AN OVERSEER IF THE DATABASE MIGRATION IS PENDING.";
 
       console.error(result);
 
@@ -1155,7 +1156,7 @@ async function employeeLogin() {
     }
 
     output.textContent =
-      "☢ WEBSITE ADDED SUCCESSFULLY.";
+      "☢ REQUEST SENT FOR OVERSEER REVIEW.";
 
     document
       .getElementById("employeeWebsiteName")
@@ -1394,6 +1395,10 @@ async function overseerLogin() {
 
       <button onclick="showWebsiteManager()">
         📂 MANAGE WEBSITES
+      </button>
+
+      <button onclick="showWebsiteRequests()">
+        📥 REVIEW WEBSITE REQUESTS
       </button>
 
       <button onclick="openUserSide()">
@@ -2073,6 +2078,68 @@ function showWebsiteManager() {
 
   loadManagedWebsites();
 
+}
+
+async function websiteRequestRpc(name, body) {
+  const session = window.overseerSession;
+  if (!session || !session.access_token) throw new Error("Overseer login required");
+  const response = await fetch(SUPABASE_URL + "/rest/v1/rpc/" + name, {
+    method: "POST",
+    headers: {
+      apikey: SUPABASE_KEY,
+      Authorization: "Bearer " + session.access_token,
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify(body)
+  });
+  if (!response.ok) throw new Error(await response.text());
+  return response.json();
+}
+
+async function showWebsiteRequests() {
+  const output = document.getElementById("overseerOutput");
+  output.innerHTML = `<h3>☢ PENDING WEBSITE REQUESTS</h3><div id="websiteRequests">LOADING...</div>`;
+  const list = document.getElementById("websiteRequests");
+  try {
+    const requests = await websiteRequestRpc("overseer_list_website_requests", {});
+    list.replaceChildren();
+    if (!requests.length) { list.textContent = "NO PENDING REQUESTS."; return; }
+    for (const request of requests) {
+      const card = document.createElement("div");
+      card.style.cssText = "border:1px solid #159615;padding:15px;margin:10px 0";
+      const title = document.createElement("strong");
+      title.textContent = request.name;
+      const url = document.createElement("p");
+      url.textContent = request.url;
+      const description = document.createElement("p");
+      description.textContent = request.description || "NO DESCRIPTION";
+      const approve = document.createElement("button");
+      approve.textContent = "APPROVE & PUBLISH";
+      approve.onclick = () => reviewWebsiteRequest(request.id, "approved", approve, reject);
+      const reject = document.createElement("button");
+      reject.textContent = "REJECT";
+      reject.onclick = () => reviewWebsiteRequest(request.id, "rejected", approve, reject);
+      card.append(title, url, description, approve, reject);
+      list.appendChild(card);
+    }
+  } catch (error) {
+    console.error(error);
+    list.textContent = "FAILED TO LOAD REQUESTS. APPLY THE V0.2 DATABASE MIGRATION.";
+  }
+}
+
+async function reviewWebsiteRequest(id, decision, approve, reject) {
+  approve.disabled = reject.disabled = true;
+  try {
+    await websiteRequestRpc("overseer_review_website_request", {
+      request_id: id, decision: decision
+    });
+    await showWebsiteRequests();
+  } catch (error) {
+    console.error(error);
+    approve.disabled = reject.disabled = false;
+    alert("REQUEST REVIEW FAILED. PLEASE TRY AGAIN.");
+  }
 }
 
 function showSecretFiles() {
