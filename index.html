@@ -194,6 +194,13 @@
       opacity: .5;
       font-size: 12px;
     }
+    .archive-list { display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:12px; margin:18px 0; }
+    .archive-card { display:flex; flex-direction:column; text-align:left; min-height:85px; }
+    .archive-card small { opacity:.72; margin-top:9px; }
+    .record-reader { padding:18px; min-height:130px; border:1px solid var(--dark-green); background:#061006; white-space:pre-wrap; overflow-wrap:anywhere; }
+    .module-controls { display:flex; gap:10px; flex-wrap:wrap; align-items:center; }
+    .module-controls input[type=range] { width:150px; }
+    .dashboard-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); gap:12px; }
   </style>
   
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -367,34 +374,45 @@
 
   </div>
 
-  <div id="holotapeList">
+  <div class="archive-list" aria-label="Holotape list"></div>
+  <article id="holotapeReader" class="record-reader" tabindex="-1" aria-live="polite"></article>
 
-    <div class="site">
-      <div class="site-name">
-        HOLOTAPE 001
-      </div>
+</section>
 
-      <div class="site-category">
-        VAULT 111 // OVERSEER LOG
-      </div>
-    </div>
 
-    <div class="site">
-      <div class="site-name">
-        HOLOTAPE 002
-      </div>
-
-      <div class="site-category">
-        CLASSIFIED // INCIDENT REPORT
-      </div>
-    </div>
-
+<section id="files" class="hidden">
+  <button onclick="showUserPage('dashboard')">← BACK TO DASHBOARD</button>
+  <h2>📁 ROBCO FILES // DOCUMENT ARCHIVE</h2>
+  <p>AUTHORIZED REFERENCE RECORDS</p>
+  <div class="archive-list" aria-label="Document list"></div>
+  <article id="fileReader" class="record-reader" tabindex="-1" aria-live="polite"></article>
+</section>
+<section id="games" class="hidden">
+  <button onclick="showUserPage('dashboard')">← BACK TO DASHBOARD</button>
+  <h2>🎮 TERMINAL MINI-GAMES</h2>
+  <p>LOCAL TRAINING SIMULATIONS</p>
+  <div class="module-controls">
+    <button onclick="startCodebreaker()">CODEBREAKER</button>
+    <button onclick="startSignalMatch()">SIGNAL MATCH</button>
   </div>
-
+  <div id="gameOutput" class="record-reader" role="region" aria-label="Game area">SELECT A GAME TO BEGIN.</div>
+</section>
+<section id="radio" class="hidden">
+  <button onclick="showUserPage('dashboard')">← BACK TO DASHBOARD</button>
+  <h2>📻 ROBCO RADIO</h2>
+  <p>TERMINAL GENERATED INSTRUMENTAL SIGNALS</p>
+  <div id="radioDisplay" class="record-reader" role="status">88.4 MHz // ROBCO SIGNAL // OFFLINE</div>
+  <div class="module-controls">
+    <button onclick="tuneRobcoRadio(-1)" aria-label="Previous station">◀ PREVIOUS</button>
+    <button onclick="toggleRobcoRadio()">POWER ON / OFF</button>
+    <button onclick="tuneRobcoRadio(1)" aria-label="Next station">NEXT ▶</button>
+    <label>VOLUME <input type="range" min="0" max="100" value="80" oninput="setRobcoVolume(this.value)"></label>
+  </div>
 </section>
 
   </div>
 
+<script src="modules.js"></script>
 <script>
 
   /*
@@ -827,6 +845,12 @@ const managedWebsites =
   function logout() {
 
     websites = [];
+
+    stopRobcoRadio();
+
+    ["dashboard", "holotapes", "files", "games", "radio"].forEach(id =>
+      document.getElementById(id).classList.add("hidden")
+    );
 
     currentCategory = "ALL";
 
@@ -3543,106 +3567,26 @@ async function reactivateCode(id) {
 }
 
   function showUserPage(page) {
-
-  const dashboard =
-    document.getElementById("dashboard");
-
-  const hub =
-    document.getElementById("hub");
-
-    const holotapes =
-  document.getElementById("holotapes");
-
-    holotapes.classList.add("hidden");
-
-  if (page === "dashboard") {
-
-    dashboard.classList.remove("hidden");
-    hub.classList.add("hidden");
-
-    return;
-
+    const sections = ['dashboard', 'hub', 'holotapes', 'files', 'games', 'radio'];
+    if (page === 'dashboard') {
+      stopRobcoRadio();
+      sections.forEach(id => document.getElementById(id).classList.toggle('hidden', id !== 'dashboard'));
+      return;
+    }
+    const target = ['websites', 'announcements'].includes(page) ? 'hub' : page;
+    if (!sections.includes(target)) return;
+    if (page !== 'radio') stopRobcoRadio();
+    sections.forEach(id => document.getElementById(id).classList.toggle('hidden', id !== target));
+    if (page === 'websites') {
+      document.getElementById('userAnnouncements').replaceChildren();
+      loadWebsites();
+    } else if (page === 'announcements') {
+      document.getElementById('sites').replaceChildren();
+      loadUserAnnouncements();
+    } else if (page === 'holotapes') renderHolotapes();
+    else if (page === 'files') renderFiles();
+    else if (page === 'radio') updateRadioDisplay();
   }
-
-
-  if (page === "websites") {
-
-    dashboard.classList.add("hidden");
-    hub.classList.remove("hidden");
-
-    loadWebsites();
-
-    return;
-
-  }
-
-
-  if (page === "announcements") {
-
-    dashboard.classList.add("hidden");
-    hub.classList.remove("hidden");
-
-    document
-      .getElementById("sites")
-      .innerHTML = "";
-
-    document
-      .getElementById("userAnnouncements")
-      .scrollIntoView({
-        behavior: "smooth"
-      });
-
-    loadUserAnnouncements();
-
-    return;
-
-  }
-
-if (page === "holotapes") {
-
-  dashboard.classList.add("hidden");
-  hub.classList.add("hidden");
-
-  document
-    .getElementById("holotapes")
-    .classList.remove("hidden");
-
-  return;
-
-}
-
-    if (page === "dashboard") {
-
-  document
-    .getElementById("holotapes")
-    .classList.add("hidden");
-
-  dashboard.classList.remove("hidden");
-  hub.classList.add("hidden");
-
-  return;
-}
-    
-  // Placeholder pages for V1 modules
-
-  dashboard.classList.add("hidden");
-  hub.classList.remove("hidden");
-
-  document
-    .getElementById("sites")
-    .innerHTML = `
-      <div class="site">
-        <div class="site-name">
-          MODULE UNDER CONSTRUCTION
-        </div>
-
-        <div class="site-category">
-          ROBCO DEVELOPMENT
-        </div>
-      </div>
-    `;
-
-}
 
 function openUserSide() {
 
@@ -3650,17 +3594,7 @@ function openUserSide() {
     .getElementById("loginScreen")
     .classList.add("hidden");
 
-  document
-    .getElementById("dashboard")
-    .classList.remove("hidden");
-
-  document
-    .getElementById("hub")
-    .classList.add("hidden");
-
-  document
-    .getElementById("holotapes")
-    .classList.add("hidden");
+  showUserPage("dashboard");
 
   const dashboard =
     document.getElementById("dashboard");
@@ -3692,6 +3626,7 @@ function openUserSide() {
 }
 
 function returnToOverseer() {
+  stopRobcoRadio();
 
   document
     .getElementById("dashboard")
@@ -3701,9 +3636,7 @@ function returnToOverseer() {
     .getElementById("hub")
     .classList.add("hidden");
 
-  document
-    .getElementById("holotapes")
-    .classList.add("hidden");
+  ["holotapes", "files", "games", "radio"].forEach(id => document.getElementById(id).classList.add("hidden"));
 
   document
     .getElementById("loginScreen")
