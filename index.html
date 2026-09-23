@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>ROBCO WEBSITE HUB</title>
+  <link rel="stylesheet" href="radio.css">
 
   <style>
     :root {
@@ -217,7 +218,7 @@
     </div>
 
     <div class="subtitle">
-      TERMINAL BUILD 1.0 // VAULT-TEC NETWORK
+      TERMINAL BUILD 1.1 // VAULT-TEC NETWORK
     </div>
   </div>
 
@@ -400,19 +401,41 @@
 <section id="radio" class="hidden">
   <button onclick="showUserPage('dashboard')">← BACK TO DASHBOARD</button>
   <h2>📻 ROBCO RADIO</h2>
-  <p>TERMINAL GENERATED INSTRUMENTAL SIGNALS</p>
-  <div id="radioDisplay" class="record-reader" role="status">88.4 MHz // ROBCO SIGNAL // OFFLINE</div>
-  <div class="module-controls">
-    <button onclick="tuneRobcoRadio(-1)" aria-label="Previous station">◀ PREVIOUS</button>
-    <button onclick="toggleRobcoRadio()">POWER ON / OFF</button>
-    <button onclick="tuneRobcoRadio(1)" aria-label="Next station">NEXT ▶</button>
-    <label>VOLUME <input type="range" min="0" max="100" value="80" oninput="setRobcoVolume(this.value)"></label>
+  <p>DOMESTIC BROADCAST SERVICE // MUSIC FOR YOUR ASSIGNED SHIFT</p>
+  <div id="radioStations" class="radio-stations" role="group" aria-label="Radio stations"></div>
+  <div class="radio-console">
+    <div class="radio-kicker">ROBCO INDUSTRIES • STEREOPHONIC RECEIVER</div>
+    <div id="radioDisplay" role="status">88.4 MHz // ROBCO SIGNAL // OFFLINE</div>
+    <div class="radio-dial" aria-hidden="true"></div>
+    <div class="radio-kicker">NOW PLAYING</div>
+    <h3 id="radioTitle">Lunch Break at Relay Nine</h3>
+    <p id="radioDetails">ROBCO HOUSE ORCHESTRA // ORIGINAL INSTRUMENTAL</p>
+    <div class="radio-progress">
+      <input id="radioProgress" aria-label="Track position" type="range" min="0" max="34" value="0" step="0.1" onchange="seekRobcoRadio(this.value)">
+      <span id="radioTime">0:00 / 0:34</span>
+    </div>
+    <div class="module-controls">
+      <button onclick="nextRobcoTrack(-1)" aria-label="Previous track">|◀ PREVIOUS</button>
+      <button id="radioPlay" onclick="toggleRobcoRadio()" aria-pressed="false">▶ PLAY</button>
+      <button onclick="stopRobcoRadio()">■ STOP</button>
+      <button onclick="nextRobcoTrack(1)" aria-label="Next track">NEXT ▶|</button>
+    </div>
+    <div class="radio-volume">
+      <button id="radioMute" onclick="muteRobcoRadio()" aria-pressed="false">MUTE</button>
+      <label for="radioVolume">VOLUME</label>
+      <input id="radioVolume" type="range" min="0" max="100" value="80" oninput="setRobcoVolume(this.value)">
+      <output id="radioVolumeValue" for="radioVolume">80%</output>
+    </div>
   </div>
+  <h3>PROGRAM QUEUE // AUTOMATIC REPEAT</h3>
+  <ol id="radioPlaylist" aria-label="Station playlist"></ol>
+  <p class="radio-note">Original instrumentals synthesized on your terminal. Legacy signals preserved in each station's queue. Select a program, then press PLAY. Playback stops when you leave Radio.</p>
 </section>
 
   </div>
 
 <script src="modules.js"></script>
+<script src="radio.js"></script>
 <script>
 
   /*

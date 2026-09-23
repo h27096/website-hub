@@ -9,16 +9,6 @@ const ROBCO_DOCUMENTS = [
   { id: 'DOC-207', title: 'Vault Supply Requisition', category: 'VAULT-TEC', lines: ['Request: replacement display tubes, quantity 4.', 'Request: printed maintenance forms, quantity 20.', 'Status: awaiting warehouse confirmation.'] },
   { id: 'DOC-312', title: 'Archive Index', category: 'RECORDS', lines: ['HT-001 // Morning Systems Check', 'HT-002 // Supply Inventory', 'HT-003 // Training Orientation'] }
 ];
-const ROBCO_STATIONS = [
-  { name: 'ROBCO SIGNAL', frequency: '88.4', notes: [220, 330, 440, 330] },
-  { name: 'VAULT AMBIENT', frequency: '101.3', notes: [196, 246.94, 293.66, 246.94] },
-  { name: 'TERMINAL TEST', frequency: '107.7', notes: [262, 392, 523.25, 392] }
-];
-let robcoAudio = null;
-let robcoRadioTimer = null;
-let robcoStation = 0;
-let robcoVolume = 0.16;
-let robcoSignalIndex = 0;
 let robcoGame = null;
 
 function moduleCard(title, subtitle, onClick) {
@@ -54,52 +44,6 @@ function renderArchive(section, items, subtitle, readerId) {
 }
 function renderHolotapes() { renderArchive('holotapes', ROBCO_TAPES, 'PLAYBACK COMPLETE', 'holotapeReader'); }
 function renderFiles() { renderArchive('files', ROBCO_DOCUMENTS, 'END OF FILE', 'fileReader'); }
-function stopRobcoRadio() {
-  if (robcoRadioTimer) clearInterval(robcoRadioTimer);
-  robcoRadioTimer = null;
-  if (robcoAudio) { robcoAudio.close(); robcoAudio = null; }
-  updateRadioDisplay();
-}
-function updateRadioDisplay() {
-  const display = document.getElementById('radioDisplay');
-  if (display) display.textContent = ROBCO_STATIONS[robcoStation].frequency + ' MHz // ' + ROBCO_STATIONS[robcoStation].name + (robcoRadioTimer ? ' // ON AIR' : ' // OFFLINE');
-}
-function playRobcoNote() {
-  if (!robcoAudio) return;
-  const oscillator = robcoAudio.createOscillator();
-  const gain = robcoAudio.createGain();
-  const t = robcoAudio.currentTime;
-  const station = ROBCO_STATIONS[robcoStation];
-  oscillator.type = 'sine';
-  oscillator.frequency.value = station.notes[robcoSignalIndex++ % station.notes.length];
-  gain.gain.setValueAtTime(0, t);
-  gain.gain.linearRampToValueAtTime(robcoVolume, t + 0.03);
-  gain.gain.exponentialRampToValueAtTime(0.001, t + 0.27);
-  oscillator.connect(gain).connect(robcoAudio.destination);
-  oscillator.start(t);
-  oscillator.stop(t + 0.28);
-}
-async function toggleRobcoRadio() {
-  if (robcoRadioTimer) { stopRobcoRadio(); return; }
-  const AudioCtor = window.AudioContext || window.webkitAudioContext;
-  if (!AudioCtor) { document.getElementById('radioDisplay').textContent = 'AUDIO UNAVAILABLE ON THIS DEVICE.'; return; }
-  try {
-    robcoAudio = new AudioCtor();
-    await robcoAudio.resume();
-    playRobcoNote();
-    robcoRadioTimer = setInterval(playRobcoNote, 360);
-    updateRadioDisplay();
-  } catch (error) {
-    stopRobcoRadio();
-    document.getElementById('radioDisplay').textContent = 'AUDIO START FAILED.';
-  }
-}
-function tuneRobcoRadio(direction) {
-  robcoStation = (robcoStation + direction + ROBCO_STATIONS.length) % ROBCO_STATIONS.length;
-  robcoSignalIndex = 0;
-  updateRadioDisplay();
-}
-function setRobcoVolume(value) { robcoVolume = Number(value) / 500; }
 function startCodebreaker() {
   robcoGame = { code: String(Math.floor(Math.random() * 900) + 100), tries: 0 };
   const output = document.getElementById('gameOutput');
