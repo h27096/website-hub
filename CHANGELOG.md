@@ -4,6 +4,10 @@
 
 ### Persistent Overseer music management
 
+- Increased the music upload limit to 500 MB (500,000,000 bytes), with an upgrade
+  migration for existing installations and a one-hour upload timeout. Supabase's
+  global limit must also permit 500 MB; Free projects are limited to 50 MB.
+
 - Added an Overseer-only music manager with validated uploads, progress, metadata
   editing, song listing, and recoverable deletion of both file and record.
 - Added the `robco-radio` private Storage bucket and `radio_tracks` database

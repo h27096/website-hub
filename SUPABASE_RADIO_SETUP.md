@@ -12,12 +12,15 @@ available during implementation, so the live database has **not** been changed.
    [`supabase/migrations/20260923_radio_music.sql`](supabase/migrations/20260923_radio_music.sql)
    into the editor and click **Run**. Use the project's administrative SQL Editor,
    not a browser's JavaScript console. The script is transactional and rerunnable.
-4. Under **Storage**, confirm a **private** bucket named `robco-radio` exists.
+4. Run the entire [500 MB upgrade migration](supabase/migrations/20260924_radio_500mb.sql)
+   next. If you already ran the original setup, only this upgrade is needed.
+5. Under **Storage**, confirm a **private** bucket named `robco-radio` exists.
    It allows only `audio/mpeg`, `audio/wav`, `audio/mp4`, `audio/aac`, and `audio/ogg`,
-   with a **26,214,400-byte (25 MiB)** limit. Keep the bucket private.
-5. If the project's global Storage file-size limit is lower than 25 MiB, either
-   upload smaller files or set that global limit to 25 MiB. The bucket still caps
-   every upload at 25 MiB. No other Storage settings need changing.
+   with a **500,000,000-byte (500 MB)** limit. Keep the bucket private.
+6. In **Storage Settings**, set the project's **Global file size limit** to at
+   least **500 MB**. Supabase Free projects cap this at 50 MB; uploads of 500 MB
+   require Pro or above. The SQL cannot raise that plan/global restriction.
+   See [Supabase file limits](https://supabase.com/docs/guides/storage/uploads/file-limits).
 
 The script creates:
 
@@ -46,7 +49,7 @@ adding themselves; this migration does not grant any access to that table.
 1. Once the GitHub Pages update is available, refresh the Hub.
 2. Sign in through the existing **Overseer** login.
 3. Select **MANAGE RADIO MUSIC**.
-4. Choose an MP3, WAV, M4A, AAC, or OGG file, up to 25 MiB.
+4. Choose an MP3, WAV, M4A, AAC, or OGG file, up to 500 MB (500,000,000 bytes).
 5. Enter the song title, artist, and station/category. Use an existing station
    name or enter a new one. Station names are normalized to uppercase.
 6. Confirm you have permission to share the audio, then select **UPLOAD SONG**.
@@ -93,9 +96,11 @@ cleanup job deletes stored songs.
   duration. Storage independently enforces size/MIME limits and authorization.
   This is not server-side transcoding or malware scanning; authorized uploaders
   remain responsible for their files. No commercial recordings are bundled.
-- Uploads use the standard Storage API with progress and a three-minute timeout.
+- Uploads use the standard Storage API with progress and a one-hour timeout.
   They are not resumable byte transfers. On a slow connection, use a smaller file
   or retry through the pending-entry workflow. No duplicate overwrite occurs.
+  Large transfers also depend on session validity and the Storage service's
+  request limits. A full 500 MB network upload was not tested against live Storage.
 - Supabase project availability, storage quota, bandwidth limits and account
   retention rules still apply. Keep your originals; provider-level deletion is
   outside the Hub's control.

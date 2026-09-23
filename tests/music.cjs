@@ -109,12 +109,19 @@ async function fillUpload(page,title='Test Broadcast') {
     // Reject oversize, wrong extension and corrupt content before reserving a row.
     const validation=await page.evaluate(async()=>{
       const messages=[];
-      for(const file of [new File(['hello'],'bad.exe'),new File(['bad'],'bad.wav'),new File([new Uint8Array(25*1024*1024+1)],'big.wav')]) {
+      for(const file of [new File(['hello'],'bad.exe'),new File(['bad'],'bad.wav'),{name:'big.wav',size:500000001}]) {
         try{await validateMusicFile(file);}catch(e){messages.push(e.message);}
       }
       return messages;
     });
     assert.equal(validation.length,3);
+    assert.match(validation[2],/MAXIMUM 500 MB/);
+    // Boundary check without allocating a 500 MB fixture: reaching slice means
+    // the size check accepted the exact limit.
+    assert.equal(await page.evaluate(async()=>{
+      try { await validateMusicFile({name:'limit.wav',size:500000000,slice(){throw Error('size accepted');}}); }
+      catch(error){return error.message;}
+    }),'size accepted');
     await fillUpload(page);
     assert.match(await page.locator('[data-music-status]').textContent(),/UPLOAD COMPLETE/);
     assert.equal(tracks.size,1);assert.equal(objects.size,1);

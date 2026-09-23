@@ -29,6 +29,10 @@ const assert = require('node:assert/strict');
   const migration = fs.readFileSync(path.join(__dirname,'../supabase/migrations/20260923_radio_music.sql'),'utf8');
   await db.exec(migration);
   await db.exec(migration); // Setup can be rerun without destroying songs.
+  const sizeMigration = fs.readFileSync(path.join(__dirname,'../supabase/migrations/20260924_radio_500mb.sql'),'utf8');
+  await db.exec(sizeMigration);
+  await db.exec(sizeMigration);
+  assert.equal(Number((await db.query("select file_size_limit from storage.buckets where id='robco-radio'")).rows[0].file_size_limit),500000000);
   async function as(role,uid,sql,args=[]) {
     await db.exec('set role ' + role);
     await db.query("select set_config('request.jwt.claim.sub',$1,false)",[uid || '']);
@@ -42,7 +46,10 @@ const assert = require('node:assert/strict');
     await assert.rejects(as('anon',null,`select public.${name}(${args})`),/permission denied/);
   }
   await assert.rejects(as('authenticated',overseer,"select public.radio_reserve_track('x','x','x','exe',100,'audio/mpeg')"),/Unsupported/);
-  await assert.rejects(as('authenticated',overseer,"select public.radio_reserve_track('x','x','x','mp3',26214401,'audio/mpeg')"),/check constraint/);
+  await assert.rejects(as('authenticated',overseer,"select public.radio_reserve_track('x','x','x','mp3',500000001,'audio/mpeg')"),/check constraint/);
+  const large = (await as('authenticated',overseer,"select * from public.radio_reserve_track('Large','Artist','Radio','mp3',500000000,'audio/mpeg')")).rows[0];
+  await as('authenticated',overseer,'select public.radio_begin_delete($1)',[large.id]);
+  await as('authenticated',overseer,'select public.radio_finish_delete($1)',[large.id]);
   const track = (await as('authenticated',overseer,rpc)).rows[0];
   assert.match(track.storage_path,/^[\da-f-]{36}\.mp3$/);
   assert.equal((await as('anon',null,'select * from public.radio_tracks')).rows.length,0);

@@ -1,7 +1,7 @@
 /* Persistent music uses the existing publishable key and Overseer user JWT.
    No privileged credentials and no audio bytes are stored in this repository. */
 const MUSIC_BUCKET = 'robco-radio';
-const MUSIC_MAX_BYTES = 25 * 1024 * 1024;
+const MUSIC_MAX_BYTES = 500 * 1000 * 1000; // 500 MB (decimal), matching Storage.
 let musicLibraryRequest = 0;
 let musicManagerBusy = false;
 
@@ -66,7 +66,7 @@ async function refreshRadioLibrary() {
 
 async function validateMusicFile(file) {
   if (!file || !file.size) throw new Error('SELECT A NONEMPTY AUDIO FILE.');
-  if (file.size > MUSIC_MAX_BYTES) throw new Error('FILE TOO LARGE. MAXIMUM 25 MiB.');
+  if (file.size > MUSIC_MAX_BYTES) throw new Error('FILE TOO LARGE. MAXIMUM 500 MB.');
   const extension = file.name.split('.').pop().toLowerCase();
   const types = {mp3:'audio/mpeg', wav:'audio/wav', m4a:'audio/mp4', aac:'audio/aac', ogg:'audio/ogg'};
   if (!types[extension]) throw new Error('USE MP3, WAV, M4A, AAC OR OGG AUDIO.');
@@ -105,7 +105,7 @@ function uploadMusicObject(track, file, onProgress) {
     xhr.setRequestHeader('Content-Type',track.mime_type);
     xhr.setRequestHeader('x-upsert','false');
     xhr.setRequestHeader('cache-control','max-age=60');
-    xhr.timeout = 180000;
+    xhr.timeout = 3600000; // Allow up to one hour for large uploads.
     xhr.upload.onprogress = event => { if (event.lengthComputable) onProgress(Math.round(event.loaded / event.total * 100)); };
     xhr.onload = () => xhr.status >= 200 && xhr.status < 300 ? resolve() : reject(new Error(xhr.status === 401 || xhr.status === 403 ? 'UPLOAD DENIED. SIGN IN AS AN OVERSEER AGAIN.' : 'UPLOAD FAILED. CHECK THE PENDING ENTRY BELOW.'));
     xhr.onerror = xhr.ontimeout = () => reject(new Error('UPLOAD INTERRUPTED. CHECK THE PENDING ENTRY BELOW BEFORE RETRYING.'));
@@ -148,7 +148,7 @@ async function showMusicManager() {
       <p>PERMANENT BROADCAST ARCHIVE</p>
       <form id="musicUploadForm">
         <label>AUDIO FILE <input name="audio" type="file" accept=".mp3,.wav,.m4a,.aac,.ogg" required></label>
-        <p class="radio-note">MP3 / WAV / M4A / AAC / OGG • MAXIMUM 25 MiB. Keep this page open until upload completes.</p>
+        <p class="radio-note">MP3 / WAV / M4A / AAC / OGG • MAXIMUM 500 MB. Keep this page open until upload completes.</p>
         <label>SONG TITLE <input name="title" maxlength="120" required></label>
         <label>ARTIST <input name="artist" maxlength="120" required></label>
         <label>STATION / CATEGORY <input name="station" maxlength="60" list="musicStationNames" value="ROBCO SIGNAL" required></label>
