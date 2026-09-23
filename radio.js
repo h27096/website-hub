@@ -1,4 +1,4 @@
-/* Original, locally synthesized RobCo instrumentals. No recordings or remote audio. */
+/* Original local signals plus optional persistent Supabase music programs. */
 const ROBCO_STATIONS = [
   { name: 'ROBCO SIGNAL', frequency: '88.4', description: 'Swing from the service desk', tracks: [
     { title: 'Lunch Break at Relay Nine', bpm: 112, root: 48, swing: .16, melody: [12,16,19,21,19,16,14,16,12,14,16,19,17,16,14,7] },
@@ -14,6 +14,11 @@ const ROBCO_STATIONS = [
     { title: 'Original Terminal Test', notes: [262,392,523.25,392] }
   ] }
 ];
+const ROBCO_LOCAL_STATIONS = ROBCO_STATIONS.map(station => ({...station, tracks:[...station.tracks]}));
+let robcoMedia = null;
+let robcoMediaTimeout = null;
+let robcoMediaCancel = null;
+const robcoSignedSources = new Map();
 let robcoStation = 0;
 let robcoTrack = 0;
 let robcoVolume = .8;
@@ -30,14 +35,21 @@ let robcoEvents = [];
 let robcoEventIndex = 0;
 let robcoQueueKey = '';
 const radioTrack = () => ROBCO_STATIONS[robcoStation].tracks[robcoTrack];
-const radioDuration = () => radioTrack().notes ? 23.04 : 64 * 60 / radioTrack().bpm;
-const radioTime = seconds => Math.floor(seconds / 60) + ':' + String(Math.floor(seconds % 60)).padStart(2, '0');
+const radioDuration = () => radioTrack().storage_path ? radioTrack().duration || 0 : radioTrack().notes ? 23.04 : 64 * 60 / radioTrack().bpm;
+const radioTime = seconds => Number.isFinite(seconds) && seconds >= 0 ? Math.floor(seconds / 60) + ':' + String(Math.floor(seconds % 60)).padStart(2, '0') : '--:--';
 const radioFrequency = midi => 440 * Math.pow(2, (midi - 69) / 12);
 function radioPosition() {
+  if (robcoMedia) return Number.isFinite(robcoMedia.currentTime) ? robcoMedia.currentTime : 0;
   return Math.min(radioDuration(), robcoPosition + (robcoState === 'ON AIR' && robcoAudio ? robcoAudio.currentTime - robcoStartedAt : 0));
 }
 function radioRelease() {
   ++robcoGeneration; // Invalidate pending resume promises before navigation or tuning.
+  clearTimeout(robcoMediaTimeout);
+  if (robcoMediaCancel) { robcoMediaCancel(); robcoMediaCancel = null; }
+  if (robcoMedia) {
+    robcoMedia.onloadedmetadata = robcoMedia.onerror = robcoMedia.onended = robcoMedia.ontimeupdate = robcoMedia.onwaiting = robcoMedia.onplaying = robcoMedia.onpause = null;
+    robcoMedia.pause(); robcoMedia.removeAttribute('src'); robcoMedia.load(); robcoMedia = null;
+  }
   clearInterval(robcoRadioTimer);
   robcoRadioTimer = null;
   const audio = robcoAudio;
@@ -122,6 +134,7 @@ function radioTick() {
 async function playRobcoRadio() {
   radioRelease();
   const generation = robcoGeneration;
+  if (radioTrack().storage_path) { await playUploadedRadio(generation); return; }
   const AudioCtor = window.AudioContext || window.webkitAudioContext;
   if (!AudioCtor) { radioFailure('AUDIO UNAVAILABLE ON THIS DEVICE. TRY A BROWSER WITH WEB AUDIO SUPPORT.'); return; }
   robcoState = 'TUNING';
@@ -184,6 +197,7 @@ function seekRobcoRadio(value) {
 function setRobcoVolume(value) {
   robcoVolume = Math.max(0, Math.min(1, (Number(value) || 0) / 100));
   if (robcoMaster) robcoMaster.gain.setTargetAtTime(robcoMuted ? 0 : robcoVolume, robcoAudio.currentTime, .02);
+  if (robcoMedia) { robcoMedia.volume = robcoVolume; robcoMedia.muted = robcoMuted; }
   updateRadioDisplay();
 }
 function muteRobcoRadio() { robcoMuted = !robcoMuted; setRobcoVolume(robcoVolume * 100); }
@@ -192,18 +206,19 @@ function updateRadioProgress() {
   if (!progress) return;
   const position = radioPosition();
   progress.max = radioDuration();
+  progress.disabled = !radioDuration();
   if (document.activeElement !== progress) progress.value = position;
   progress.setAttribute('aria-valuetext', radioTime(position) + ' of ' + radioTime(radioDuration()));
-  document.getElementById('radioTime').textContent = radioTime(position) + ' / ' + radioTime(radioDuration());
+  document.getElementById('radioTime').textContent = radioTime(position) + ' / ' + (radioDuration() ? radioTime(radioDuration()) : '--:--');
 }
 function updateRadioDisplay() {
   const display = document.getElementById('radioDisplay');
   if (!display) return;
   const station = ROBCO_STATIONS[robcoStation];
-  const status = station.frequency + ' MHz // ' + station.name + ' // ' + robcoState + (robcoMessage ? ' — ' + robcoMessage : '');
+  const status = (station.frequency ? station.frequency + ' MHz // ' : 'ARCHIVE // ') + station.name + ' // ' + robcoState + (robcoMessage ? ' — ' + robcoMessage : '');
   if (display.textContent !== status) display.textContent = status;
   document.getElementById('radioTitle').textContent = radioTrack().title;
-  document.getElementById('radioDetails').textContent = 'ROBCO HOUSE ORCHESTRA // ' + (robcoTrack + 1) + ' OF ' + station.tracks.length + ' // ' + (radioTrack().notes ? 'LEGACY SIGNAL' : 'ORIGINAL INSTRUMENTAL');
+  document.getElementById('radioDetails').textContent = (radioTrack().artist || 'ROBCO HOUSE ORCHESTRA') + ' // ' + (robcoTrack + 1) + ' OF ' + station.tracks.length + ' // ' + (radioTrack().storage_path ? 'OVERSEER ARCHIVE' : radioTrack().notes ? 'LEGACY SIGNAL' : 'ORIGINAL INSTRUMENTAL');
   const active = robcoState === 'ON AIR' || robcoState === 'TUNING';
   document.getElementById('radioPlay').textContent = active ? 'Ⅱ PAUSE' : '▶ PLAY';
   document.getElementById('radioPlay').setAttribute('aria-pressed', String(active));
@@ -215,7 +230,7 @@ function updateRadioDisplay() {
   if (robcoQueueKey !== key) {
     const stations = document.getElementById('radioStations');
     if (!stations.children.length) ROBCO_STATIONS.forEach((item, index) => {
-      const button = moduleCard(item.frequency + ' // ' + item.name, item.description, () => selectRobcoStation(index));
+      const button = moduleCard((item.frequency ? item.frequency + ' // ' : '') + item.name, item.description, () => selectRobcoStation(index));
       stations.append(button);
     });
     [...stations.children].forEach((button, index) => button.setAttribute('aria-pressed', String(index === robcoStation)));
@@ -226,7 +241,7 @@ function updateRadioDisplay() {
       station.tracks.forEach((track, index) => {
         const item = document.createElement('li');
         const button = document.createElement('button');
-        button.textContent = track.title;
+        button.textContent = track.title + (track.artist ? ' — ' + track.artist : '');
         button.onclick = () => selectRobcoTrack(index);
         item.append(button); playlist.append(item);
       });
@@ -238,3 +253,80 @@ function updateRadioDisplay() {
   updateRadioProgress();
 }
 window.addEventListener('pagehide', stopRobcoRadio);
+
+function applyRadioLibrary(rows) {
+  const selected = radioTrack();
+  const stationName = ROBCO_STATIONS[robcoStation].name;
+  const stations = ROBCO_LOCAL_STATIONS.map(station => ({...station, tracks:[...station.tracks]}));
+  for (const row of rows) {
+    if (row.status !== 'ready') continue;
+    let station = stations.find(item => item.name === row.station);
+    if (!station) { station = {name:row.station,description:'Overseer broadcast archive',tracks:[]}; stations.push(station); }
+    station.tracks.push({...row, duration:row.id === selected.id ? selected.duration : undefined});
+  }
+  const stationIndex = stations.findIndex(item => item.tracks.some(track => selected.id ? track.id === selected.id : item.name === stationName && track.title === selected.title));
+  if (stationIndex < 0) stopRobcoRadio();
+  ROBCO_STATIONS.splice(0,ROBCO_STATIONS.length,...stations);
+  robcoStation = stationIndex < 0 ? 0 : stationIndex;
+  robcoTrack = stationIndex < 0 ? 0 : stations[stationIndex].tracks.findIndex(track => selected.id ? track.id === selected.id : track.title === selected.title);
+  if (stationIndex < 0) robcoMessage = 'PREVIOUS SONG REMOVED. SELECT ANOTHER PROGRAM.';
+  robcoQueueKey = '';
+  document.getElementById('radioStations').replaceChildren();
+  delete document.getElementById('radioPlaylist').dataset.station;
+  updateRadioDisplay();
+}
+async function playUploadedRadio(generation) {
+  robcoState = 'TUNING'; robcoMessage = '';
+  updateRadioDisplay();
+  try {
+    const track = radioTrack();
+    const cached = robcoSignedSources.get(track.storage_path);
+    const source = cached && cached.expires > Date.now() ? cached.url : await musicSignedUrl(track.storage_path);
+    if (generation !== robcoGeneration) return;
+    if (!cached || cached.expires <= Date.now()) robcoSignedSources.set(track.storage_path,{url:source,expires:Date.now()+55*60*1000});
+    const audio = new Audio(); robcoMedia = audio;
+    audio.volume = robcoVolume; audio.muted = robcoMuted; audio.preload = 'metadata';
+    const startupDeadline = new Promise((_,reject) => {
+      robcoMediaCancel = () => reject(new Error('Playback cancelled'));
+      robcoMediaTimeout = setTimeout(() => reject(new Error('AUDIO LOAD TIMED OUT. PRESS PLAY TO RETRY.')),20000);
+    });
+    const metadataReady = new Promise((resolve,reject) => {
+      audio.onloadedmetadata = () => {
+        if (!Number.isFinite(audio.duration) || audio.duration <= 0) { reject(new Error('INVALID AUDIO DURATION. TRY ANOTHER SONG.')); return; }
+        track.duration = audio.duration;
+        // A catalog refresh may have replaced this track object while loading.
+        if (radioTrack().id === track.id) radioTrack().duration = audio.duration;
+        audio.currentTime = Math.min(robcoPosition, Math.max(0,audio.duration - .1));
+        resolve();
+      };
+      audio.onerror = () => reject(new Error('AUDIO MISSING OR UNSUPPORTED. REFRESH THE LIBRARY OR SELECT ANOTHER SONG.'));
+      audio.src = source;
+    });
+    // Start within the click's activation window when a signed URL is cached.
+    // If a browser blocks the first network-delayed start, the next PLAY can retry.
+    await Promise.race([Promise.all([metadataReady,audio.play()]),startupDeadline]);
+    if (generation !== robcoGeneration) return;
+    clearTimeout(robcoMediaTimeout); robcoMediaCancel = null;
+    audio.onloadedmetadata = null;
+    audio.onerror = () => { if (generation === robcoGeneration) {
+      robcoSignedSources.delete(track.storage_path);
+      radioFailure('SIGNAL LOST. PRESS PLAY TO RETRY OR SELECT ANOTHER SONG.');
+    } };
+    audio.ontimeupdate = updateRadioProgress;
+    audio.onended = () => { if (generation === robcoGeneration) nextRobcoTrack(1); };
+    audio.onwaiting = () => { if (generation === robcoGeneration) {
+      robcoMessage = 'BUFFERING…'; updateRadioDisplay();
+      clearTimeout(robcoMediaTimeout);
+      robcoMediaTimeout = setTimeout(() => {
+        if (generation === robcoGeneration) { robcoPosition = radioPosition(); radioFailure('SIGNAL TIMED OUT. PRESS PLAY TO RETRY.'); }
+      },20000);
+    } };
+    audio.onplaying = () => { if (generation === robcoGeneration) { clearTimeout(robcoMediaTimeout); robcoMessage = ''; updateRadioDisplay(); } };
+    robcoState = 'ON AIR'; updateRadioDisplay();
+  } catch (error) {
+    if (generation === robcoGeneration) {
+      if (error.name !== 'NotAllowedError') robcoSignedSources.delete(radioTrack().storage_path);
+      radioFailure(error.name === 'NotAllowedError' ? 'PLAYBACK BLOCKED. PRESS PLAY TO RETRY.' : error.message);
+    }
+  }
+}

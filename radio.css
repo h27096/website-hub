@@ -19,3 +19,12 @@
 #radio .radio-volume input { width:140px; }
 #radio .radio-note { font-size:12px; line-height:1.7; opacity:.75; }
 @media(max-width:480px) { #radio .radio-console { padding:14px; } #radio .module-controls button { flex:1 1 40%; padding:12px 8px; } }
+#musicManager { text-align:left; }
+#musicManager label { display:block; margin-top:14px; }
+#musicManager .music-rights { display:flex; gap:10px; align-items:center; font-size:13px; line-height:1.5; }
+#musicManager input[type=checkbox] { width:auto; flex-shrink:0; margin:0; }
+#musicManager input[type=file] { max-width:100%; font-size:13px; }
+#musicManager .music-song { border:1px solid var(--dark-green); padding:16px; margin-top:20px; overflow-wrap:anywhere; }
+#musicManager .radio-note { font-size:12px; line-height:1.6; opacity:.8; }
+#musicManager button:disabled, #musicManager input:disabled { opacity:.5; cursor:wait; }
+#musicManager input:focus-visible, #musicManager button:focus-visible { outline:2px solid var(--green); outline-offset:3px; }

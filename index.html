@@ -402,6 +402,8 @@
   <button onclick="showUserPage('dashboard')">← BACK TO DASHBOARD</button>
   <h2>📻 ROBCO RADIO</h2>
   <p>DOMESTIC BROADCAST SERVICE // MUSIC FOR YOUR ASSIGNED SHIFT</p>
+  <p id="radioLibraryStatus" role="status">LOCAL BROADCASTS READY.</p>
+  <button onclick="refreshRadioLibrary()">REFRESH MUSIC LIBRARY</button>
   <div id="radioStations" class="radio-stations" role="group" aria-label="Radio stations"></div>
   <div class="radio-console">
     <div class="radio-kicker">ROBCO INDUSTRIES • STEREOPHONIC RECEIVER</div>
@@ -429,13 +431,14 @@
   </div>
   <h3>PROGRAM QUEUE // AUTOMATIC REPEAT</h3>
   <ol id="radioPlaylist" aria-label="Station playlist"></ol>
-  <p class="radio-note">Original instrumentals synthesized on your terminal. Legacy signals preserved in each station's queue. Select a program, then press PLAY. Playback stops when you leave Radio.</p>
+  <p class="radio-note">Overseer music is retrieved from the broadcast archive. Original local instrumentals and legacy signals remain available. Select a program, then press PLAY. Playback stops when you leave Radio.</p>
 </section>
 
   </div>
 
 <script src="modules.js"></script>
 <script src="radio.js"></script>
+<script src="music.js"></script>
 <script>
 
   /*
@@ -1446,6 +1449,10 @@ async function overseerLogin() {
 
       <button onclick="showWebsiteRequests()">
         📥 REVIEW WEBSITE REQUESTS
+      </button>
+
+      <button onclick="showMusicManager()">
+        📻 MANAGE RADIO MUSIC
       </button>
 
       <button onclick="openUserSide()">
@@ -3608,7 +3615,7 @@ async function reactivateCode(id) {
       loadUserAnnouncements();
     } else if (page === 'holotapes') renderHolotapes();
     else if (page === 'files') renderFiles();
-    else if (page === 'radio') updateRadioDisplay();
+    else if (page === 'radio') { updateRadioDisplay(); refreshRadioLibrary(); }
   }
 
 function openUserSide() {
