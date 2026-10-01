@@ -9,25 +9,59 @@ function musicHeaders(manage = false) {
   const headers = { apikey: SUPABASE_KEY };
   if (manage) {
     const token = window.overseerSession?.access_token;
-    if (!token) throw new Error('OVERSEER LOGIN REQUIRED.');
+    if (!token) throw new Error('OVERSEER SESSION EXPIRED. SIGN IN AGAIN.');
     headers.Authorization = 'Bearer ' + token;
   }
   return headers;
 }
+// Only log classified messages and allowlisted codes, never raw responses/headers.
+function musicFailure(status, data, endpoint, storagePath) {
+  const code = String(data?.code || data?.error || data?.statusCode || '');
+  const detail = String(data?.message || data?.error || '').toLowerCase();
+  const storage = endpoint.startsWith('/storage/');
+  let message = storage ? 'STORAGE REQUEST FAILED. RETRY OR CONTACT AN OVERSEER.' : 'RADIO DATABASE REQUEST FAILED.';
+  if (status === 0) message = storage ? 'UPLOAD INTERRUPTED. CHECK THE PENDING ENTRY BEFORE RETRYING.' : 'RADIO CONNECTION INTERRUPTED. RETRY THE OPERATION.';
+  else if (status === 401 || /jwt|token.*expired/.test(detail)) message = 'OVERSEER SESSION EXPIRED. SIGN IN AGAIN.';
+  else if (/bucket.*(not found|does not exist)/.test(detail) || code === 'NoSuchBucket') message = 'STORAGE BUCKET NOT CONFIGURED.';
+  else if (code === 'PGRST202' || code === '42883') message = 'RADIO DATABASE FUNCTION MISSING. APPLY THE RADIO MIGRATION.';
+  else if (/storage object not found|upload missing/.test(detail) || code === 'NoSuchKey' || code === 'ObjectNotFound') message = 'STORAGE OBJECT NOT FOUND. REMOVE THIS PENDING ENTRY AND UPLOAD AGAIN.';
+  else if (status === 403 || code === '42501' || /row.level security|policy|unauthorized/.test(detail)) message = storage ? 'UPLOAD DENIED BY STORAGE POLICY. CONTACT AN OVERSEER.' : 'OVERSEER AUTHORIZATION DENIED.';
+  else if (status === 413 || /maximum.*size|too large|size limit/.test(detail)) message = 'FILE TOO LARGE FOR STORAGE. WEBSITE MAXIMUM 100 MB; CHECK STORAGE CONFIGURATION.';
+  else if (/mime|content.type/.test(detail)) message = 'AUDIO FORMAT DENIED BY STORAGE CONFIGURATION.';
+  else if (endpoint.includes('radio_publish_track')) message = 'DATABASE FINALIZATION FAILED. KEEP THE PENDING ENTRY AND RETRY FINISH.';
+  else if (status === 404 || code === 'PGRST205') message = storage ? 'STORAGE OBJECT OR BUCKET NOT FOUND.' : 'RADIO DATABASE NOT CONFIGURED.';
+  const safeCode = /^[A-Za-z0-9_]{1,40}$/.test(code) ? code : 'UNSPECIFIED';
+  const error = new Error(message);
+  error.radioDiagnostic = {status, code:safeCode, message, ...(storagePath ? {storagePath} : {})};
+  console.error('[RobCo Radio]', error.radioDiagnostic);
+  return error;
+}
 async function musicRequest(endpoint, { manage = false, method = 'GET', body } = {}) {
-  const response = await fetch(SUPABASE_URL + endpoint, {
-    method, headers: { ...musicHeaders(manage), 'Content-Type': 'application/json' },
-    ...(body !== undefined ? { body: JSON.stringify(body) } : {}),
-    signal: AbortSignal.timeout(30000)
-  });
+  let response;
+  try {
+    response = await fetch(SUPABASE_URL + endpoint, {
+      method, headers: { ...musicHeaders(manage), 'Content-Type': 'application/json' },
+      ...(body !== undefined ? { body: JSON.stringify(body) } : {}),
+      signal: AbortSignal.timeout(30000)
+    });
+  } catch (error) {
+    if (error.message === 'OVERSEER SESSION EXPIRED. SIGN IN AGAIN.') throw error;
+    throw musicFailure(0, {message:'network interrupted'}, endpoint);
+  }
   let data;
   try { data = await response.json(); } catch (_) { data = null; }
-  if (!response.ok) {
-    if (response.status === 401 || response.status === 403) throw new Error(manage ? 'ACCESS DENIED OR SESSION EXPIRED. SIGN IN AS AN OVERSEER AGAIN.' : 'MUSIC ACCESS UNAVAILABLE. CONTACT AN OVERSEER.');
-    if (response.status === 404 || data?.code === 'PGRST205' || data?.code === 'PGRST202') throw new Error('MUSIC SERVICE NOT CONFIGURED. APPLY THE RADIO SQL SETUP.');
-    throw new Error(data?.message || data?.error || 'MUSIC REQUEST FAILED. PLEASE RETRY.');
-  }
+  if (!response.ok) throw musicFailure(response.status, data, endpoint);
   return data;
+}
+function musicObjectPath(path) { return path.split('/').map(encodeURIComponent).join('/'); }
+async function verifyMusicObject(track) {
+  // Authoritative metadata check; no audio download or signed-URL caching.
+  return await musicRpc('radio_storage_object_exists', {p_id:track.id}) === true;
+}
+async function publishMusicTrack(track) {
+  if (!await verifyMusicObject(track)) throw new Error('STORAGE OBJECT NOT FOUND. REMOVE THIS PENDING ENTRY AND UPLOAD AGAIN.');
+  // The existing publish RPC additionally checks stored size and MIME.
+  return musicRpc('radio_publish_track', {p_id:track.id});
 }
 function musicRpc(name, body = {}) { return musicRequest('/rest/v1/rpc/' + name, { manage:true, method:'POST', body }); }
 async function musicRows(manage = false) {
@@ -41,7 +75,7 @@ async function musicRows(manage = false) {
 }
 async function musicSignedUrl(storagePath) {
   let data;
-  try { data = await musicRequest('/storage/v1/object/sign/' + MUSIC_BUCKET + '/' + encodeURIComponent(storagePath), { method:'POST', body:{expiresIn:3600} }); }
+  try { data = await musicRequest('/storage/v1/object/sign/' + MUSIC_BUCKET + '/' + musicObjectPath(storagePath), { method:'POST', body:{expiresIn:3600} }); }
   catch (_) { throw new Error('TRACK UNAVAILABLE. REFRESH THE LIBRARY OR TRY ANOTHER SONG.'); }
   if (!data?.signedURL) throw new Error('TRACK UNAVAILABLE. REFRESH THE LIBRARY OR TRY ANOTHER SONG.');
   // Only accept a Storage URL from this project's origin.
@@ -100,15 +134,23 @@ async function validateMusicFile(file) {
 function uploadMusicObject(track, file, onProgress) {
   return new Promise((resolve,reject) => {
     const xhr = new XMLHttpRequest();
-    xhr.open('POST', SUPABASE_URL + '/storage/v1/object/' + MUSIC_BUCKET + '/' + encodeURIComponent(track.storage_path));
+    xhr.open('POST', SUPABASE_URL + '/storage/v1/object/' + MUSIC_BUCKET + '/' + musicObjectPath(track.storage_path));
     for (const [key,value] of Object.entries(musicHeaders(true))) xhr.setRequestHeader(key,value);
     xhr.setRequestHeader('Content-Type',track.mime_type);
     xhr.setRequestHeader('x-upsert','false');
     xhr.setRequestHeader('cache-control','max-age=60');
     xhr.timeout = 3600000; // Allow up to one hour for large uploads.
     xhr.upload.onprogress = event => { if (event.lengthComputable) onProgress(Math.round(event.loaded / event.total * 100)); };
-    xhr.onload = () => xhr.status >= 200 && xhr.status < 300 ? resolve() : reject(new Error(xhr.status === 401 || xhr.status === 403 ? 'UPLOAD DENIED. SIGN IN AS AN OVERSEER AGAIN.' : 'UPLOAD FAILED. CHECK THE PENDING ENTRY BELOW.'));
-    xhr.onerror = xhr.ontimeout = () => reject(new Error('UPLOAD INTERRUPTED. CHECK THE PENDING ENTRY BELOW BEFORE RETRYING.'));
+    xhr.onload = () => {
+      if (xhr.status >= 200 && xhr.status < 300) return resolve();
+      let data; try { data = JSON.parse(xhr.responseText); } catch (_) { data = null; }
+      reject(musicFailure(xhr.status,data,'/storage/v1/object/',track.storage_path));
+    };
+    xhr.onerror = xhr.ontimeout = xhr.onabort = () => {
+      const error = new Error('UPLOAD INTERRUPTED. CHECK THE PENDING ENTRY BEFORE RETRYING.');
+      console.error('[RobCo Radio]', {status:xhr.status, code:'UploadInterrupted', message:error.message, storagePath:track.storage_path});
+      reject(error);
+    };
     xhr.send(file);
   });
 }
@@ -118,7 +160,10 @@ function musicMetadata(form) {
   if (!metadata.p_title || !metadata.p_artist || !metadata.p_station || metadata.p_title.length > 120 || metadata.p_artist.length > 120 || metadata.p_station.length > 60) throw new Error('ENTER TITLE AND ARTIST (1–120 CHARACTERS), AND STATION (1–60).');
   return metadata;
 }
-function musicMessage(panel, message) { const status = panel.querySelector('[data-music-status]'); if (status) status.textContent = message; }
+function musicMessage(panel, message, failed = false) {
+  const status = panel.querySelector('[data-music-status]');
+  if (status) { status.textContent = message; status.setAttribute('role',failed ? 'alert' : 'status'); }
+}
 function setMusicBusy(panel,busy) {
   musicManagerBusy = busy;
   panel.querySelectorAll('button,input').forEach(control => { control.disabled = busy; });
@@ -127,12 +172,22 @@ function setMusicBusy(panel,busy) {
 async function musicAction(panel,action) {
   if (musicManagerBusy) return;
   setMusicBusy(panel,true);
+  let failure;
   try { await action(); }
-  catch (error) { musicMessage(panel,error.name === 'TimeoutError' ? 'CONNECTION TIMED OUT. REFRESH THE LIST BEFORE RETRYING.' : error.message); }
+  catch (error) {
+    failure = error.message;
+    console.error('[RobCo Radio action]', error.radioDiagnostic || {message:'RADIO OPERATION FAILED', name:error.name});
+    musicMessage(panel,failure,true);
+  }
   finally {
-    setMusicBusy(panel,false);
-    if (panel.isConnected) await renderMusicManagerList(panel);
-    refreshRadioLibrary();
+    try {
+      if (panel.isConnected) await renderMusicManagerList(panel);
+    } finally {
+      setMusicBusy(panel,false);
+      // A refresh must never erase the failed operation's explanation.
+      if (failure && panel.isConnected) musicMessage(panel,failure,true);
+      refreshRadioLibrary();
+    }
   }
 }
 async function showMusicManager() {
@@ -176,7 +231,7 @@ async function showMusicManager() {
         const track = await musicRpc('radio_reserve_track',{...metadata,p_extension:format.extension,p_size:file.size,p_mime:format.mime});
         await uploadMusicObject(track,file,percent => musicMessage(panel,'UPLOADING AUDIO… ' + percent + '%'));
         musicMessage(panel,'VERIFYING STORED FILE…');
-        await musicRpc('radio_publish_track',{p_id:track.id});
+        await publishMusicTrack(track);
         form.reset();
         musicMessage(panel,'UPLOAD COMPLETE. SONG IS STORED AND AVAILABLE ON THE RADIO.');
       });
@@ -219,18 +274,20 @@ async function renderMusicManagerList(panel) {
       };
       if (track.status === 'pending') {
         const finish = document.createElement('button'); finish.type='button'; finish.textContent='FINISH PENDING UPLOAD';
-        finish.onclick = () => musicAction(panel,async () => { await musicRpc('radio_publish_track',{p_id:track.id}); musicMessage(panel,'STORED UPLOAD PUBLISHED.'); });
+        finish.onclick = () => musicAction(panel,async () => { await publishMusicTrack(track); musicMessage(panel,'STORED UPLOAD PUBLISHED.'); });
         card.append(finish);
         const help = document.createElement('p'); help.className='radio-note'; help.textContent='If the file reached Storage, finish the upload. Otherwise remove this pending entry, then upload again.'; card.append(help);
       }
-      const remove = document.createElement('button'); remove.type='button'; remove.textContent = track.status === 'deleting' ? 'RETRY REMOVAL' : 'DELETE SONG';
+      const remove = document.createElement('button'); remove.type='button'; remove.textContent = track.status === 'pending' ? 'REMOVE PENDING ENTRY' : track.status === 'deleting' ? 'RETRY REMOVAL' : 'DELETE SONG';
       remove.onclick = () => {
         if (!confirm('Permanently remove "' + track.title + '" and its stored audio?')) return;
         musicAction(panel,async () => {
           musicMessage(panel,'REMOVING SONG AND STORED AUDIO…');
           const deleting = await musicRpc('radio_begin_delete',{p_id:track.id});
           if (deleting?.storage_path) {
-            await musicRequest('/storage/v1/object/' + MUSIC_BUCKET,{manage:true,method:'DELETE',body:{prefixes:[deleting.storage_path]}});
+            if (await verifyMusicObject(deleting)) {
+              await musicRequest('/storage/v1/object/' + MUSIC_BUCKET,{manage:true,method:'DELETE',body:{prefixes:[deleting.storage_path]}});
+            }
             await musicRpc('radio_finish_delete',{p_id:track.id});
           }
           musicMessage(panel,'SONG AND STORED AUDIO REMOVED.');

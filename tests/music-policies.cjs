@@ -41,6 +41,8 @@ const assert = require('node:assert/strict');
   assert.deepEqual((await db.query("select public,allowed_mime_types from storage.buckets where id='robco-radio'")).rows[0],bucketBefore);
   assert.equal(Number((await db.query("select file_size from public.radio_tracks where storage_path='33333333-3333-4333-8333-333333333333.mp3'")).rows[0].file_size),200000000);
   await db.exec("delete from public.radio_tracks where storage_path='33333333-3333-4333-8333-333333333333.mp3'");
+  const recovery = fs.readFileSync(path.join(__dirname,'../supabase/migrations/20261001_radio_upload_recovery.sql'),'utf8');
+  await db.exec(recovery); await db.exec(recovery);
   async function as(role,uid,sql,args=[]) {
     await db.exec('set role ' + role);
     await db.query("select set_config('request.jwt.claim.sub',$1,false)",[uid || '']);
@@ -49,7 +51,7 @@ const assert = require('node:assert/strict');
   const rpc = "select * from public.radio_reserve_track('Song','Artist','Radio','mp3',100,'audio/mpeg')";
   await assert.rejects(as('anon',null,rpc),/permission denied/);
   await assert.rejects(as('authenticated',member,rpc),/Overseer access denied/);
-  for (const [name,args] of [['radio_publish_track',`'${member}'`],['radio_edit_track',`'${member}','x','x','x'`],['radio_begin_delete',`'${member}'`],['radio_finish_delete',`'${member}'`]]) {
+  for (const [name,args] of [['radio_storage_object_exists',`'${member}'`],['radio_publish_track',`'${member}'`],['radio_edit_track',`'${member}','x','x','x'`],['radio_begin_delete',`'${member}'`],['radio_finish_delete',`'${member}'`]]) {
     await assert.rejects(as('authenticated',member,`select public.${name}(${args})`),/Overseer access denied/);
     await assert.rejects(as('anon',null,`select public.${name}(${args})`),/permission denied/);
   }
@@ -68,7 +70,9 @@ const assert = require('node:assert/strict');
   await assert.rejects(as('authenticated',member,upload,[track.storage_path]),/row-level security/);
   await assert.rejects(as('authenticated',overseer,upload,['unreserved.mp3']),/row-level security/);
   await assert.rejects(as('authenticated',overseer,'select public.radio_publish_track($1)',[track.id]),/missing or incomplete/);
+  assert.equal((await as('authenticated',overseer,'select public.radio_storage_object_exists($1) as exists',[track.id])).rows[0].exists,false);
   await as('authenticated',overseer,upload,[track.storage_path]);
+  assert.equal((await as('authenticated',overseer,'select public.radio_storage_object_exists($1) as exists',[track.id])).rows[0].exists,true);
   assert.equal((await as('anon',null,"select * from storage.objects where bucket_id='robco-radio'")).rows.length,0);
   await as('authenticated',overseer,'select public.radio_publish_track($1)',[track.id]);
   assert.equal((await as('anon',null,'select * from public.radio_tracks')).rows.length,1);

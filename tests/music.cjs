@@ -5,16 +5,18 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 const http = require('node:http');
+const {execFileSync} = require('node:child_process');
 const {randomUUID} = require('node:crypto');
 const root = path.resolve(__dirname,'..');
 const tracks = new Map(), objects = new Map();
-let failPublish = false, failDelete = false, failFinish = false, offline = false;
+let failUpload = false, failPublish = false, failDelete = false, failFinish = false, offline = false;
 const wav = Buffer.alloc(44 + 44100 * 2 * 2);
 wav.write('RIFF'); wav.writeUInt32LE(wav.length-8,4); wav.write('WAVEfmt ',8);
 wav.writeUInt32LE(16,16); wav.writeUInt16LE(1,20); wav.writeUInt16LE(1,22);
 wav.writeUInt32LE(44100,24); wav.writeUInt32LE(88200,28); wav.writeUInt16LE(2,32); wav.writeUInt16LE(16,34);
 wav.write('data',36); wav.writeUInt32LE(wav.length-44,40);
 for (let i=0;i<(wav.length-44)/2;i++) wav.writeInt16LE(Math.round(Math.sin(i*2*Math.PI*220/44100)*1000),44+i*2);
+const mp3 = execFileSync('ffmpeg',['-hide_banner','-loglevel','error','-f','lavfi','-i','sine=frequency=220:duration=2','-f','mp3','pipe:1']);
 const server = http.createServer((req,res) => {
   const file = path.join(root, req.url === '/' ? 'index.html' : req.url.split('?')[0]);
   if (!file.startsWith(root+path.sep) || !fs.existsSync(file)) {res.writeHead(404);res.end();return;}
@@ -35,6 +37,7 @@ async function setup(page) {
       if (!authorized) return reply({message:'denied'},403);
       const name=url.pathname.split('/').pop(), body=JSON.parse(request.postData() || '{}');
       if(name==='radio_is_overseer') return reply(true);
+      if(name==='radio_storage_object_exists') return reply(objects.has(tracks.get(body.p_id)?.storage_path));
       if(name==='radio_reserve_track') {
         const id=randomUUID(); const track={id,title:body.p_title,artist:body.p_artist,station:body.p_station.toUpperCase(),storage_path:id+'.'+body.p_extension,file_size:body.p_size,mime_type:body.p_mime,status:'pending'};
         tracks.set(id,track);return reply(track);
@@ -65,11 +68,11 @@ async function setup(page) {
         return reply({signedURL:'/object/sign/robco-radio/'+name+'?token=test'});
       }
       const file=objects.get(name);if(!file)return reply({message:'gone'},404);
-      return route.fulfill({status:200,contentType:'audio/wav',body:file});
+      return route.fulfill({status:200,contentType:[...tracks.values()].find(t=>t.storage_path===name)?.mime_type || 'audio/wav',body:file});
     }
     if(url.pathname.startsWith('/storage/v1/object/robco-radio')) {
       if(!authorized)return reply({message:'denied'},403);
-      if(method==='POST') {objects.set(decodeURIComponent(url.pathname.split('/').pop()),request.postDataBuffer());return reply({Key:'saved'});}
+      if(method==='POST') {if(failUpload){failUpload=false;return reply({statusCode:'403',error:'Unauthorized',message:'new row violates row-level security policy'},400);} objects.set(decodeURIComponent(url.pathname.split('/').pop()),request.postDataBuffer());return reply({Key:'saved'});}
       if(method==='DELETE') {
         if(failDelete){failDelete=false;return reply({message:'Storage temporarily unavailable. Retry removal.'},503);}
         for(const name of JSON.parse(request.postData()).prefixes)objects.delete(name);
@@ -88,9 +91,9 @@ async function loginManager(page,url) {
   await page.getByRole('button',{name:'MANAGE RADIO MUSIC'}).click();
   await page.waitForSelector('#musicUploadForm');
 }
-async function fillUpload(page,title='Test Broadcast') {
+async function fillUpload(page,title='Test Broadcast',useMp3=false) {
   const form=page.locator('#musicUploadForm');
-  await form.locator('[name=audio]').setInputFiles({name:'../../unsafe name.wav',mimeType:'audio/wav',buffer:wav});
+  await form.locator('[name=audio]').setInputFiles({name:useMp3?'small.mp3':'../../unsafe name.wav',mimeType:useMp3?'audio/mpeg':'audio/wav',buffer:useMp3?mp3:wav});
   await form.locator('[name=title]').fill(title);
   await form.locator('[name=artist]').fill('Authorized Artist');
   await form.locator('[name=station]').fill('Archive Test');
@@ -100,7 +103,7 @@ async function fillUpload(page,title='Test Broadcast') {
 }
 (async()=>{
   await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));
-  const browser=await chromium.launch({headless:true,...(process.env.BROWSER_CHANNEL?{channel:process.env.BROWSER_CHANNEL}:{})});
+  const browser=await chromium.launch({headless:true,...(process.env.BROWSER_EXECUTABLE?{executablePath:process.env.BROWSER_EXECUTABLE,args:["--no-sandbox"]}:{}),...(process.env.BROWSER_CHANNEL?{channel:process.env.BROWSER_CHANNEL}:{})});
   try {
     const context=await browser.newContext(); const page=await context.newPage();
     const errors=[];page.on('pageerror',e=>errors.push(e.message));await setup(page);
@@ -170,8 +173,22 @@ async function fillUpload(page,title='Test Broadcast') {
     assert.equal([...tracks.values()].filter(t=>t.status==='pending').length,1);
     await page.getByRole('button',{name:'FINISH PENDING UPLOAD'}).click();await page.waitForFunction(()=>!musicManagerBusy);
     assert.equal([...tracks.values()].filter(t=>t.status==='ready').length,2);
+    // Storage commonly wraps policy errors in HTTP 400. Keep useful error visible.
+    failUpload=true;await fillUpload(page,'Abandoned Broadcast');
+    assert.match(await page.locator('[data-music-status]').textContent(),/UPLOAD DENIED BY STORAGE POLICY/);
+    await page.getByRole('button',{name:'REFRESH SONG LIST'}).click();
+    await page.waitForSelector('.music-song');
+    assert.match(await page.locator('[data-music-status]').textContent(),/UPLOAD DENIED BY STORAGE POLICY/);
+    const abandoned=[...tracks.values()].find(t=>t.status==='pending');
+    assert(abandoned && !objects.has(abandoned.storage_path));
+    await page.getByRole('button',{name:'FINISH PENDING UPLOAD'}).click();await page.waitForFunction(()=>!musicManagerBusy);
+    assert.match(await page.locator('[data-music-status]').textContent(),/STORAGE OBJECT NOT FOUND. REMOVE THIS PENDING ENTRY AND UPLOAD AGAIN/);
+    assert.equal(tracks.get(abandoned.id).status,'pending');
+    page.on('dialog',dialog=>dialog.accept());
+    await page.getByRole('button',{name:'REMOVE PENDING ENTRY'}).click();await page.waitForFunction(()=>!musicManagerBusy);
+    assert(!tracks.has(abandoned.id));
     // Storage failure preserves a deleting row and hides it from listeners.
-    page.on('dialog',dialog=>dialog.accept());failDelete=true;
+    failDelete=true;
     await page.locator('.music-song').first().getByRole('button',{name:'DELETE SONG',exact:true}).click();
     await page.waitForFunction(()=>!musicManagerBusy);
     assert.equal(tracks.get(track.id).status,'deleting');assert(objects.has(track.storage_path));
@@ -181,6 +198,11 @@ async function fillUpload(page,title='Test Broadcast') {
     assert(!objects.has(track.storage_path));assert(tracks.has(track.id));
     await page.getByRole('button',{name:'RETRY REMOVAL'}).click();await page.waitForFunction(()=>!musicManagerBusy);
     assert(!tracks.has(track.id));
+    await fillUpload(page,'Small MP3',true);
+    const mp3Track=[...tracks.values()].find(t=>t.title==='Small MP3');
+    assert.equal(mp3Track.status,'ready');assert(objects.get(mp3Track.storage_path).equals(mp3));
+    await page.locator('.music-song').filter({has:page.locator('h3',{hasText:'Small MP3'})}).getByRole('button',{name:'DELETE SONG',exact:true}).click();
+    await page.waitForFunction(()=>!musicManagerBusy);assert(!tracks.has(mp3Track.id));assert(!objects.has(mp3Track.storage_path));
     // Missing or corrupt media reports an error and local broadcasts remain usable.
     const remaining=[...tracks.values()][0];objects.delete(remaining.storage_path);
     await listener.evaluate(()=>refreshRadioLibrary());
@@ -202,6 +224,6 @@ async function fillUpload(page,title='Test Broadcast') {
     await page.evaluate(()=>{window.overseerSession=null;return showMusicManager();});
     assert.equal(await page.locator('#musicUploadForm').count(),0);
     assert.deepEqual(errors,[]);
-    console.log('PASS: validated upload, permanent catalog across fresh browser context, real WAV playback, pause/seek/mute/volume, safe metadata edits, refresh persistence, pending publication recovery, two-stage deletion retry, missing/corrupt audio, offline fallback, management isolation, responsive layout.');
+    console.log('PASS: small MP3 and WAV upload, Storage policy-denial diagnostics persisting after refresh, absent-object finish refusal and abandoned pending cleanup, validated upload, permanent catalog across fresh browser context, real WAV playback, pause/seek/mute/volume, safe metadata edits, refresh persistence, pending publication recovery, two-stage deletion retry, missing/corrupt audio, offline fallback, management isolation, responsive layout.');
   } finally {await browser.close();}
 })().catch(e=>{console.error(e);process.exitCode=1;}).finally(()=>server.close());

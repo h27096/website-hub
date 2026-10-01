@@ -138,3 +138,67 @@ hosted Storage HTTP implementation.
 References: [Supabase Storage access control](https://supabase.com/docs/guides/storage/security/access-control),
 [private buckets](https://supabase.com/docs/guides/storage/buckets/fundamentals),
 [Storage metadata schema](https://supabase.com/docs/guides/storage/schema/design).
+
+## v1.1 upload diagnostics and pending recovery (2026-10-01)
+
+Run the **entire** `supabase/migrations/20261001_radio_upload_recovery.sql`
+file in this project's **Supabase Dashboard → SQL Editor → New query → Run**.
+Run it after the original Radio setup. It is safe to rerun; it adds only an
+Overseer-authorized object-existence RPC. It does not erase data, change bucket
+settings, remove policies, or expose Storage metadata to listeners. Do not rerun
+older size migrations as part of this repair. The website remains limited to
+100,000,000 bytes. The existing higher bucket limit is not an explanation for a
+small file failing.
+
+Sign out and sign back in as an Overseer, reload the site, then:
+
+1. Upload a small valid MP3 with title, artist, station and rights confirmation.
+   Confirm **UPLOAD COMPLETE**, the Storage object, library refresh and playback.
+2. Edit metadata, reload and confirm it persists. Delete the song and confirm both
+   its object and database row disappear.
+3. For an old pending row without audio, click **FINISH PENDING UPLOAD**. It must
+   show **STORAGE OBJECT NOT FOUND. REMOVE THIS PENDING ENTRY AND UPLOAD AGAIN.**
+   Then click **REMOVE PENDING ENTRY** and confirm the abandoned row disappears.
+4. For a pending row whose complete object exists, click **FINISH PENDING UPLOAD**.
+   The existing publish function still verifies size and MIME before publishing.
+5. If upload fails, read the persistent status and the browser console's
+   `[RobCo Radio]` diagnostic (HTTP status, safe code/message, attempted path).
+   Do not share Authorization headers, JWTs, keys or full network dumps.
+
+### Diagnosis and limits of verification
+
+The repository's raw-file POST format, UUID filename, MIME mapping, publishable
+key plus Overseer JWT, reserved-pending INSERT policy and management grants are
+consistent. A pending row proves reservation succeeded; it does not prove
+Storage accepted the subsequent POST. Previously that POST's response body was
+ignored, preventing a precise diagnosis. Missing-object recovery also attempted
+Storage deletion unnecessarily before final database cleanup. The repaired flow
+checks authoritative object metadata and skips the DELETE request when absent;
+`radio_finish_delete` still refuses cleanup if an object exists.
+
+**The live upload rejection has not been reproduced with an authenticated
+Overseer session.** Do not assume RLS is the cause or disable it. If the new
+message reports policy denial, compare the deployed policies to the original
+Radio migration, including any other restrictive policies on `storage.objects`.
+A bucket limit alone does not override Storage's project limit or MIME settings.
+Use the safe diagnostic to identify the actual rejection before changing those.
+
+Read-only inspection in SQL Editor (does not change policies or data):
+
+```sql
+select id, public, file_size_limit, allowed_mime_types
+from storage.buckets where id = 'robco-radio';
+select schemaname, tablename, policyname, permissive, roles, cmd, qual, with_check
+from pg_policies
+where (schemaname = 'storage' and tablename = 'objects')
+   or (schemaname = 'public' and tablename = 'radio_tracks');
+select p.proname, p.prosecdef, p.proconfig,
+       has_function_privilege('authenticated', p.oid, 'EXECUTE') as authenticated_execute
+from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+where n.nspname = 'public' and p.proname like 'radio_%';
+```
+
+Local tests: `node tests/music.cjs` with Playwright/Chromium and ffmpeg, and
+`node tests/music-policies.cjs` with `@electric-sql/pglite`. Browser tests mock
+Supabase; policy tests execute migrations and PostgreSQL RLS locally. Neither
+proves the configuration of the live Supabase project.
