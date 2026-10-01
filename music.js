@@ -1,7 +1,7 @@
 /* Persistent music uses the existing publishable key and Overseer user JWT.
    No privileged credentials and no audio bytes are stored in this repository. */
 const MUSIC_BUCKET = 'robco-radio';
-const MUSIC_MAX_BYTES = 500 * 1000 * 1000; // 500 MB (decimal), matching Storage.
+const MUSIC_MAX_BYTES = 100 * 1000 * 1000; // 100 MB (decimal), matching Storage.
 let musicLibraryRequest = 0;
 let musicManagerBusy = false;
 
@@ -66,7 +66,7 @@ async function refreshRadioLibrary() {
 
 async function validateMusicFile(file) {
   if (!file || !file.size) throw new Error('SELECT A NONEMPTY AUDIO FILE.');
-  if (file.size > MUSIC_MAX_BYTES) throw new Error('FILE TOO LARGE. MAXIMUM 500 MB.');
+  if (file.size > MUSIC_MAX_BYTES) throw new Error('FILE TOO LARGE. MAXIMUM 100 MB.');
   const extension = file.name.split('.').pop().toLowerCase();
   const types = {mp3:'audio/mpeg', wav:'audio/wav', m4a:'audio/mp4', aac:'audio/aac', ogg:'audio/ogg'};
   if (!types[extension]) throw new Error('USE MP3, WAV, M4A, AAC OR OGG AUDIO.');
@@ -148,7 +148,7 @@ async function showMusicManager() {
       <p>PERMANENT BROADCAST ARCHIVE</p>
       <form id="musicUploadForm">
         <label>AUDIO FILE <input name="audio" type="file" accept=".mp3,.wav,.m4a,.aac,.ogg" required></label>
-        <p class="radio-note">MP3 / WAV / M4A / AAC / OGG • MAXIMUM 500 MB. Keep this page open until upload completes.</p>
+        <p class="radio-note">MP3 / WAV / M4A / AAC / OGG • MAXIMUM 100 MB. Keep this page open until upload completes.</p>
         <label>SONG TITLE <input name="title" maxlength="120" required></label>
         <label>ARTIST <input name="artist" maxlength="120" required></label>
         <label>STATION / CATEGORY <input name="station" maxlength="60" list="musicStationNames" value="ROBCO SIGNAL" required></label>
