@@ -1,0 +1,26 @@
+.employee-document-dialog {
+  width: min(980px, 96vw); max-height: 92vh; padding: 24px;
+  border: 2px solid #55ff55; background: #020b05; color: #a2ef9e;
+  font-family: "Courier New", monospace; text-shadow: none;
+  box-shadow: 0 0 35px #15961555; overflow-y: auto;
+}
+.employee-document-dialog::backdrop { background: #000c; }
+.employee-document-dialog header { display: flex; gap: 16px; justify-content: space-between; align-items: start; border-bottom: 1px solid #159615; }
+.employee-document-dialog h1 { font-size: clamp(20px, 4vw, 28px); }
+.employee-document-dialog small { letter-spacing: .1em; }
+.employee-document-dialog button { width: auto; margin: 4px; padding: 9px 12px; font-size: 13px; }
+.employee-document-dialog button:disabled { opacity: .45; cursor: wait; }
+.employee-document-dialog button:focus-visible, .employee-document-dialog select:focus-visible { outline: 2px solid white; outline-offset: 2px; }
+.employee-document-status { font-size: 13px; line-height: 1.5; min-height: 24px; }
+.employee-document-toolbar { position: sticky; top: -24px; z-index: 1; padding: 10px 0; background: #07190b; border-block: 1px solid #159615; }
+.employee-document-toolbar select { background: #021006; color: #b8ffb2; padding: 9px; border: 1px solid #55ff55; font: inherit; }
+.employee-document-body { margin-top: 18px; padding: clamp(16px, 4vw, 38px); background: #071309; border: 1px solid #235c2d; text-align: left; font-size: 16px; line-height: 1.7; overflow-wrap: anywhere; white-space: pre-wrap; min-height: 180px; }
+.employee-document-body[contenteditable=true] { outline: 2px solid #55ff55; min-height: 45vh; }
+.employee-document-body p { margin: 0 0 1em; }
+.employee-document-body h1,.employee-document-body h2,.employee-document-body h3 { color: #65ff65; line-height: 1.35; margin: 1.2em 0 .6em; }
+.employee-document-body ul,.employee-document-body ol { padding-left: 28px; white-space: normal; }
+.employee-document-body a { color: #d4ffd0; text-decoration: underline; }
+.employee-document-logo { display: block; width: 150px; max-width: 100%; margin: 0 auto 24px; border-radius: 50%; }
+.employee-document-history { margin-top: 24px; border-top: 1px solid #55ff55; }
+.employee-document-revision { padding: 12px 0; border-bottom: 1px solid #235c2d; overflow-wrap: anywhere; }
+@media (max-width: 520px) { .employee-document-dialog { padding: 12px; } .employee-document-toolbar { top: -12px; } }

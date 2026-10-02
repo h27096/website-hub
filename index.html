@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>ROBCO WEBSITE HUB</title>
   <link rel="stylesheet" href="radio.css">
+  <link rel="stylesheet" href="employee-document.css">
 
   <style>
     :root {
@@ -439,6 +440,7 @@
 <script src="modules.js"></script>
 <script src="radio.js"></script>
 <script src="music.js"></script>
+<script src="employee-document.js"></script>
 <script>
 
   /*
@@ -1082,6 +1084,8 @@ async function employeeLogin() {
 
       <hr>
 
+      <button onclick="openEmployeeDocument()">📄 ROBCO EMPLOYEE DOCUMENT</button>
+
       <h3>REQUEST WEBSITE</h3>
       <p>SUBMISSIONS REQUIRE OVERSEER APPROVAL BEFORE PUBLICATION.</p>
 
@@ -1450,6 +1454,8 @@ async function overseerLogin() {
       <button onclick="showWebsiteRequests()">
         📥 REVIEW WEBSITE REQUESTS
       </button>
+
+      <button onclick="openEmployeeDocument(true)">📄 MANAGE EMPLOYEE DOCUMENT</button>
 
       <button onclick="showMusicManager()">
         📻 MANAGE RADIO MUSIC

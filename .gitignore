@@ -1,0 +1,6 @@
+node_modules/
+*.private.sql
+*.docx
+test-results/
+__pycache__/
+*.pyc
