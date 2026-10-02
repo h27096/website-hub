@@ -9,12 +9,9 @@ const vm = require('node:vm');
 const root = path.resolve(__dirname, '..');
 const data = vm.runInNewContext(fs.readFileSync(path.join(root, 'version-history-data.js'), 'utf8') + '\nJSON.stringify(ROBCO_VERSION_HISTORY)');
 const history = JSON.parse(data);
-assert.equal(history.releases[0].version, 'v1.1');
-assert.deepEqual(history.releases.map(r => r.version), ['v1.1','v1.0','v0.5','v0.4','v0.3','v0.2','v0.1']);
-assert.deepEqual(history.roadmap, [
-  {version:'v1.2',title:'More Games'},
-  {version:'v1.3',title:'Make the Proxy work and add it to the Home Screen'}
-]);
+assert.equal(history.releases[0].version, 'v1.2');
+assert.deepEqual(history.releases.map(r => r.version), ['v1.2','v1.1','v1.0','v0.5','v0.4','v0.3','v0.2','v0.1']);
+assert.deepEqual(history.roadmap, []);
 const versions = new Set();
 for (const release of history.releases) {
   assert.match(release.version, /^v\d+\.[0-9]$/);
@@ -42,7 +39,7 @@ const server = http.createServer((req,res) => {
     await page.route('https://*.supabase.co/**',r => {
       requests++;
       const url = r.request().url(); let data = [];
-      if (url.includes('use_access_code')) data = {success:true};
+      if (url.includes('use_access_code') || url.includes('privacy_preview_login')) data = {success:true};
       if (url.includes('employee_login')) data = true;
       if (url.includes('/auth/v1/token')) data = {user:{id:'test'},access_token:'test-token'};
       if (url.includes('/overseers?')) data = [{user_id:'test'}];
@@ -54,16 +51,16 @@ const server = http.createServer((req,res) => {
       await button.click();
       const dialog = page.getByRole('dialog', {name:'VERSION / UPDATE LOG'});
       assert(await dialog.isVisible());
-      assert.equal(await dialog.locator('.version-history-current').textContent(), 'ROBCO WEBSITE HUB // VERSION v1.1');
+      assert.equal(await dialog.locator('.version-history-current').textContent(), 'ROBCO WEBSITE HUB // VERSION v1.2');
       const sections = dialog.locator('section');
       assert.equal(await sections.nth(0).locator('article').count(), history.releases.length);
       for (const release of history.releases) {
         const entry = sections.nth(0).locator('article').filter({has:page.getByRole('heading',{name:new RegExp('^'+release.version.replace('.', '\\.')+' //')})});
         assert.deepEqual(await entry.locator('li').allTextContents(), release.changes);
       }
-      assert(!/v1\.[23]/.test(await sections.nth(0).textContent()));
-      assert.match(await sections.nth(1).textContent(), /NOT YET IMPLEMENTED/);
-      assert.deepEqual(await sections.nth(1).locator('h3').allTextContents(), ['v1.2 // UPCOMING','v1.3 // UPCOMING']);
+      assert(!/v1\.3/.test(await dialog.textContent()));
+      assert.match(await sections.nth(1).textContent(), /NEXT RELEASE \/\/ NOT YET ANNOUNCED/);
+      assert.deepEqual(await sections.nth(1).locator('h3').allTextContents(), []);
       const text = await dialog.textContent();
       if (canonicalText) assert.equal(text,canonicalText); else canonicalText = text;
       assert.equal(await dialog.locator('input,textarea,[contenteditable=true]').count(),0);
@@ -102,6 +99,6 @@ const server = http.createServer((req,res) => {
     const before = requests;
     await checkHistory(page.locator('.header button'), 'offline-backend');
     assert.equal(requests,before);
-    console.log('PASS: canonical data, public/three-role access, v1.1/history/roadmap, no editor/backend dependency, preserved form, Escape/close/focus, desktop/mobile layout.');
+    console.log('PASS: canonical data, public/three-role access, combined v1.2/history/unannounced roadmap, no editor/backend dependency, preserved form, Escape/close/focus, desktop/mobile layout.');
   } finally {await browser.close();}
 })().catch(error => {console.error(error);process.exitCode=1;}).finally(() => server.close());

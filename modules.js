@@ -45,9 +45,11 @@ function renderArchive(section, items, subtitle, readerId) {
 function renderHolotapes() { renderArchive('holotapes', ROBCO_TAPES, 'PLAYBACK COMPLETE', 'holotapeReader'); }
 function renderFiles() { renderArchive('files', ROBCO_DOCUMENTS, 'END OF FILE', 'fileReader'); }
 function startCodebreaker() {
+  const lifecycle = beginRobcoGame('CODEBREAKER', '', startCodebreaker);
   robcoGame = { code: String(Math.floor(Math.random() * 900) + 100), tries: 0 };
   const output = document.getElementById('gameOutput');
-  output.replaceChildren();
+  const reset = output.querySelector('button');
+  output.replaceChildren(reset);
   const p = document.createElement('p');
   p.textContent = 'GUESS THE 3-DIGIT ACCESS CODE. YOU HAVE 8 ATTEMPTS. FEEDBACK SHOWS DIGITS IN THE CORRECT POSITION.';
   const input = document.createElement('input');
@@ -72,8 +74,10 @@ function startCodebreaker() {
   input.focus();
 }
 function startSignalMatch() {
+  const lifecycle = beginRobcoGame('SIGNAL MATCH', '', startSignalMatch);
   const output = document.getElementById('gameOutput');
-  output.replaceChildren();
+  const reset = output.querySelector('button');
+  output.replaceChildren(reset);
   const symbols = ['△', '◇', '○', '□'];
   const pattern = Array.from({ length: 4 }, () => symbols[Math.floor(Math.random() * symbols.length)]);
   const title = document.createElement('p');
@@ -96,5 +100,6 @@ function startSignalMatch() {
   });
   controls.append(...buttons);
   output.append(title, controls, result);
-  setTimeout(() => { if (title.isConnected) title.textContent = 'REPEAT THE FOUR SYMBOL SIGNAL.'; }, 3000);
+  lifecycle.later(() => { if (title.isConnected) title.textContent = 'REPEAT THE FOUR SYMBOL SIGNAL.'; }, 3000);
 }
+

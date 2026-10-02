@@ -1,0 +1,1 @@
+{"name":"robco-privacy-preview","version":"1.2.0","private":true,"scripts":{"start":"node server.cjs","test":"node --test ../tests/proxy.test.cjs"},"engines":{"node":">=24"}}

@@ -32,7 +32,7 @@ async function setup(page) {
     const authorized=request.headers().authorization==='Bearer overseer-test';
     if(url.pathname.includes('/auth/v1/token')) return reply({user:{id:'overseer'},access_token:'overseer-test'});
     if(url.pathname.includes('/overseers')) return reply([{user_id:'overseer'}]);
-    if(url.pathname.includes('/rpc/use_access_code')) return reply({success:true});
+    if(url.pathname.includes('/rpc/use_access_code') || url.pathname.includes('/rpc/privacy_preview_login')) return reply({success:true});
     if(url.pathname.includes('/rpc/radio_')) {
       if (!authorized) return reply({message:'denied'},403);
       const name=url.pathname.split('/').pop(), body=JSON.parse(request.postData() || '{}');
@@ -227,3 +227,4 @@ async function fillUpload(page,title='Test Broadcast',useMp3=false) {
     console.log('PASS: small MP3 and WAV upload, Storage policy-denial diagnostics persisting after refresh, absent-object finish refusal and abandoned pending cleanup, validated upload, permanent catalog across fresh browser context, real WAV playback, pause/seek/mute/volume, safe metadata edits, refresh persistence, pending publication recovery, two-stage deletion retry, missing/corrupt audio, offline fallback, management isolation, responsive layout.');
   } finally {await browser.close();}
 })().catch(e=>{console.error(e);process.exitCode=1;}).finally(()=>server.close());
+

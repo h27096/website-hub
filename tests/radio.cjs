@@ -23,7 +23,7 @@ const server = http.createServer((req,res) => {
     await page.route('https://*.supabase.co/**', route => {
       const url = route.request().url();
       let data = [];
-      if (url.includes('use_access_code')) data = {success:true};
+      if (url.includes('use_access_code') || url.includes('privacy_preview_login')) data = {success:true};
       if (url.includes('employee_login')) data = true;
       if (url.includes('/auth/v1/token')) data = {user:{id:'test'}, access_token:'test-token'};
       if (url.includes('/overseers?')) data = [{user_id:'test'}];
@@ -111,7 +111,7 @@ const server = http.createServer((req,res) => {
     await page.getByRole('button',{name:'TEST CODE'}).click();
     assert.match(await page.locator('#gameOutput').textContent(),/ACCESS GRANTED/);
     await page.evaluate(() => startSignalMatch());
-    assert.equal(await page.locator('#gameOutput button').count(),4);
+    assert.equal(await page.locator('#gameOutput button').count(),5); // Four symbols plus reset.
     for (const name of ['websites','announcements']) {
       await page.evaluate(name => showUserPage(name),name);
       assert(await page.locator('#hub').isVisible());
@@ -142,3 +142,4 @@ const server = http.createServer((req,res) => {
     console.log('PASS: audio rendering, playback, pause, seek, navigation, queue advance, station switching, mute, errors, async cancellation, responsive layout, login, dashboard, archives, games, websites, announcements, employee and Overseer flows (mocked service).');
   } finally { await browser.close(); }
 })().catch(error => { console.error(error); process.exitCode = 1; }).finally(() => server.close());
+

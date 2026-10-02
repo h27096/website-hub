@@ -143,7 +143,7 @@ const root = path.resolve(__dirname,'..');
       return {html:result.innerHTML,unsafe:['javascript:evil()','data:text/html,x','https://safe.test\\evil'].some(RobcoDocument.safeURL)};
     }); assert.equal(safety.html,'text<p>safe</p>'); assert.equal(safety.unsafe,false);
     await page.setViewportSize({width:390,height:844});
-    assert.ok(await page.locator('dialog').evaluate(el=>el.scrollWidth<=el.clientWidth));
+    assert.ok(await page.locator('#employeeDocumentDialog').evaluate(el=>el.scrollWidth<=el.clientWidth));
     if(process.env.DOC_SCREENSHOT) await page.screenshot({path:process.env.DOC_SCREENSHOT});
     if(process.env.PRIVATE_DOC_SEED) {
       await db.exec('delete from employee_document_revisions; delete from employee_documents');
@@ -159,3 +159,4 @@ const root = path.resolve(__dirname,'..');
     console.log('PASS: Employee/Overseer login flows, preserved request form, rich text/undo/redo, safe paste, PostgreSQL save/reload, Employee updates, cancel, offline draft, conflicts, history/restore, mobile layout.');
   } finally {await browser.close(); await new Promise(r=>server.close(r)); await db.close();}
 })().catch(error=>{console.error(error);process.exitCode=1;});
+

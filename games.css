@@ -1,0 +1,9 @@
+.training-board {display:flex; flex-wrap:wrap; gap:10px; max-width:480px;}
+.training-board button {min-height:48px; min-width:48px; touch-action:manipulation;}
+.memory-grid {display:grid; grid-template-columns:repeat(4,minmax(0,1fr));}
+.circuit-grid {display:grid; grid-template-columns:repeat(3,minmax(0,1fr));}
+.training-board button[aria-pressed="true"] {background:#55ff55; color:#010401;}
+.training-board button:focus-visible {outline:3px double currentColor; outline-offset:3px;}
+.memory-grid button:disabled {opacity:.65;}
+#privateTerminal p {overflow-wrap:anywhere;}
+@media (max-width:420px) {.memory-grid {grid-template-columns:repeat(3,minmax(0,1fr));}}

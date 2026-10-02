@@ -52,7 +52,7 @@
   });
   const roadmap = section('COMING FEATURES / ROADMAP');
   const planned = document.createElement('p');
-  planned.textContent = 'PLANNED ONLY // NOT YET IMPLEMENTED';
+  planned.textContent = data.roadmap.length ? 'PLANNED ONLY // NOT YET IMPLEMENTED' : 'NEXT RELEASE // NOT YET ANNOUNCED';
   roadmap.append(planned);
   data.roadmap.forEach(feature => {
     const entry = document.createElement('article');
