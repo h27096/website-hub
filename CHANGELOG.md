@@ -1,5 +1,10 @@
 # Release history
 
+> The authoritative public release history, current version (the first release),
+> and upcoming roadmap are maintained in [`version-history-data.js`](version-history-data.js).
+> These pre-existing detailed development notes are preserved for reference.
+> Future development must follow [`AGENTS.md`](AGENTS.md).
+
 ## v1.1 — Better Music on Radio
 
 ### Persistent Overseer music management

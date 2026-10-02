@@ -1,0 +1,24 @@
+.version-history-dialog {
+  width: min(850px, 94vw);
+  max-height: 90dvh;
+  padding: clamp(14px, 4vw, 28px);
+  overflow-y: auto;
+  overflow-wrap: anywhere;
+  border: 2px solid var(--green, #55ff55);
+  background: #020b05;
+  color: #a2ef9e;
+  font-family: "Courier New", monospace;
+  text-shadow: none;
+  box-shadow: 0 0 30px #15961555;
+}
+.version-history-dialog::backdrop { background: #000c; }
+.version-history-dialog header { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; justify-content: space-between; }
+.version-history-dialog h1 { font-size: clamp(20px, 4vw, 28px); }
+.version-history-dialog h2 { font-size: clamp(18px, 3vw, 22px); }
+.version-history-dialog h3, .version-history-current { color: #55ff55; }
+.version-history-dialog section { margin-top: 28px; border-top: 1px solid #159615; }
+.version-history-dialog article { padding: 4px 0 12px; border-bottom: 1px dashed #235c2d; }
+.version-history-dialog li, .version-history-dialog p { line-height: 1.6; }
+.version-history-dialog ul { padding-left: 22px; }
+.version-history-dialog button { width: auto; max-width: 100%; font: inherit; }
+.version-history-dialog button:focus-visible, .version-history-link:focus-visible { outline: 2px solid white; outline-offset: 3px; }

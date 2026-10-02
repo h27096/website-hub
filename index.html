@@ -6,6 +6,9 @@
   <title>ROBCO WEBSITE HUB</title>
   <link rel="stylesheet" href="radio.css">
   <link rel="stylesheet" href="employee-document.css">
+  <link rel="stylesheet" href="version-history.css">
+  <script src="version-history-data.js" defer></script>
+  <script src="version-history.js" defer></script>
 
   <style>
     :root {
@@ -218,9 +221,8 @@
       ROBCO INDUSTRIES // WEBSITE HUB
     </div>
 
-    <div class="subtitle">
-      TERMINAL BUILD 1.1 // VAULT-TEC NETWORK
-    </div>
+    <div class="subtitle" data-hub-version>ROBCO WEBSITE HUB // VERSION LOADING</div>
+    <button class="version-history-link" onclick="openVersionHistory()">UPDATE LOG / VERSION HISTORY</button>
   </div>
 
 
@@ -270,6 +272,7 @@
   </div>
 
   <div class="dashboard-grid">
+    <button onclick="openVersionHistory()">UPDATE LOG / VERSION HISTORY</button>
 
     <button onclick="showUserPage('websites')">
       🌐 WEBSITE HUB
@@ -970,6 +973,7 @@ const managedWebsites =
     <div class="login">
 
       <h1>☢ EMPLOYEE TERMINAL</h1>
+      <button onclick="openVersionHistory()">UPDATE LOG / VERSION HISTORY</button>
 
       <p>
         WEBSITE MANAGEMENT ACCESS
@@ -1081,6 +1085,8 @@ async function employeeLogin() {
       <p>
         WEBSITE SUBMISSION SYSTEM
       </p>
+
+      <button onclick="openVersionHistory()">UPDATE LOG / VERSION HISTORY</button>
 
       <hr>
 
@@ -1251,6 +1257,7 @@ async function employeeLogin() {
     <div class="login">
 
       <h1>☢ OVERSEER TERMINAL</h1>
+      <button onclick="openVersionHistory()">UPDATE LOG / VERSION HISTORY</button>
 
       <p>ROBCO ADMINISTRATIVE ACCESS</p>
 
@@ -1436,6 +1443,8 @@ async function overseerLogin() {
       <p>
         ROBCO ADMINISTRATIVE CONTROL
       </p>
+
+      <button onclick="openVersionHistory()">UPDATE LOG / VERSION HISTORY</button>
 
       <hr>
 
