@@ -5,22 +5,9 @@
 > These pre-existing detailed development notes are preserved for reference.
 > Future development must follow [`AGENTS.md`](AGENTS.md).
 
-## v1.2 — GAMES + PRIVATE TERMINAL
+## v1.2 — More Games
 
-- Added Memory Banks, Circuit Grid and Reactor Timing. Preserved Codebreaker and
-  Signal Match, added reset controls and cancellation on navigation/backgrounding.
-- Recovered the original unpublished privacy-preview source from the September 22
-  milestone and extended its backend, client and Supabase configuration model.
-- Added the Private Terminal to User Home, with honest disabled/unconfigured states,
-  URL entry, connection/loading/errors, Back/Forward/Reload and return navigation.
-- Added persistent Overseer controls and authenticated user capabilities, enforced
-  through restricted RPCs and repeated backend state checks. Kept exact approved
-  hosts, public-address validation, DNS pinning and isolated inert source text.
-- Deployment is separate: apply the SQL migrations and host/configure the HTTPS
-  backend as described in [Private Terminal setup](PRIVATE_TERMINAL_SETUP.md).
-  No live backend or database deployment is included in this source release.
-- The previously separate proxy roadmap item is included here. The next release
-  is not yet announced. Historical entries below are preserved.
+- Added three new Mini-Games: Memory Banks, Circuit Grid and Reactor Timing.
 
 ## v1.1 — Better Music on Radio
 

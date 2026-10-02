@@ -5,7 +5,8 @@
   overflow-y: auto;
   overflow-wrap: anywhere;
   border: 2px solid var(--green, #55ff55);
-  background: #020b05;
+  background: #000;
+  color-scheme: dark;
   color: #a2ef9e;
   font-family: "Courier New", monospace;
   text-shadow: none;

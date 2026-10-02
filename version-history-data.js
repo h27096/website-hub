@@ -2,12 +2,7 @@
 const ROBCO_VERSION_HISTORY = {
   releases: [
     { version: 'v1.2', changes: [
-      'GAMES + PRIVATE TERMINAL: one combined release.',
-      'Added Memory Banks, Circuit Grid and Reactor Timing; preserved Codebreaker and Signal Match with restart controls and game cleanup.',
-      'Recovered and improved the approved-destination Private Terminal, with Home Screen access, connection/error states and Back, Forward and Reload for isolated source text previews.',
-      'Added persistent Supabase Overseer enable/disable and approved-host controls, with database authorization and backend enforcement.',
-      'Added short-lived user sessions, HTTPS destination checks, pinned public IPv4 connections, request limits and private-network protection.',
-      'Separate backend hosting, Supabase migrations and backend URL configuration are required; the release does not include a deployed proxy service.'
+      'Added three new Mini-Games: Memory Banks, Circuit Grid and Reactor Timing.'
     ] },
     { version: 'v1.1', changes: [
       'Improved the Radio/Music system.',
