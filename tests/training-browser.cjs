@@ -79,7 +79,9 @@ const root = path.resolve(__dirname, "..");
         body = JSON.parse(req.postData() || "{}");
       let result = [];
       try {
-        if (name === "training-auth") {
+        if (name === "use_access_code") {
+          result = {success: body.input_code === "normal-test-password"};
+        } else if (name === "training-auth") {
           result =
             body.action === "recover"
               ? {
@@ -138,6 +140,19 @@ const root = path.resolve(__dirname, "..");
       }
     });
     await page.goto(`http://127.0.0.1:${server.address().port}`);
+    await hubLogin(page);
+  }
+  async function hubLogin(page) {
+    const entry = page.getByRole("button", {name: "ROBCO TRAINING CENTER", exact: true});
+    assert.equal(await entry.isVisible(), false);
+    await page.evaluate(() => openTraining());
+    assert.equal(await page.locator('.training-dialog[open]').count(), 0);
+    await page.locator('#accessCode').fill('wrong-password');
+    await page.evaluate(() => login());
+    assert.equal(await entry.isVisible(), false);
+    await page.locator('#accessCode').fill('normal-test-password');
+    await page.evaluate(() => login());
+    assert.equal(await entry.isVisible(), true);
   }
   try {
     const page = await browser.newPage();
@@ -176,6 +191,7 @@ const root = path.resolve(__dirname, "..");
       .click();
     await d.getByText(/Trainee \/\/ TRAINEE/).waitFor();
     await page.reload();
+    await hubLogin(page);
     await page
       .getByRole("button", { name: "ROBCO TRAINING CENTER", exact: true })
       .click();
@@ -294,6 +310,11 @@ const root = path.resolve(__dirname, "..");
     await mobile.screenshot({
       path: path.join(root, "test-results/training-mobile.png"),
     });
+    await mobile.evaluate(() => logout());
+    assert.equal(await md.isVisible(), false);
+    assert.equal(await mobile.getByRole('button', {name:'ROBCO TRAINING CENTER', exact:true}).isVisible(), false);
+    await mobile.evaluate(() => openTraining());
+    assert.equal(await md.isVisible(), false);
     assert.deepEqual(errors, []);
     console.log(
       "PASS Training browser: featured/library, sign-in/refresh, cloud results for all five modes, flashcards, imports/editor, personnel, touch controls, mobile overflow",

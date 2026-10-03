@@ -1184,6 +1184,7 @@
     }
   }
   window.openTraining = async function (mode = "catalog") {
+    if (!window.canOpenTraining?.()) return;
     shell();
     try {
       if (mode === "manage") await catalog(true);
@@ -1192,5 +1193,8 @@
     } catch (e) {
       say(e.message, true);
     }
+  };
+  window.closeTraining = () => {
+    if (dialog?.open) dialog.close();
   };
 })();
