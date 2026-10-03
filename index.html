@@ -228,7 +228,6 @@
 
     <div class="subtitle" data-hub-version>ROBCO WEBSITE HUB // VERSION LOADING</div>
     <button class="version-history-link" onclick="openVersionHistory()">UPDATE LOG / VERSION HISTORY</button>
-    <button onclick="openTraining()">ROBCO TRAINING CENTER</button>
   </div>
 
 
@@ -278,6 +277,7 @@
   </div>
 
   <div class="dashboard-grid">
+    <button onclick="openTraining()">ROBCO TRAINING CENTER</button>
     <button onclick="openVersionHistory()">UPDATE LOG / VERSION HISTORY</button>
 
     <button onclick="showUserPage('websites')">
@@ -481,6 +481,8 @@ window.supabaseClient = supabase.createClient(
 );
 
   let websites = [];
+  let hubUserAuthenticated = false;
+  window.canOpenTraining = () => hubUserAuthenticated || !!window.overseerSession;
 
   let currentCategory = "ALL";
 
@@ -577,6 +579,7 @@ async function login() {
 
       message.textContent =
         "ACCESS GRANTED.";
+      hubUserAuthenticated = true;
 
       document
         .getElementById("loginScreen")
@@ -876,6 +879,8 @@ const managedWebsites =
   */
 
   function logout() {
+    hubUserAuthenticated = false;
+    window.closeTraining?.();
     stopRobcoGame();
 
     websites = [];

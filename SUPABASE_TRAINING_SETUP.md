@@ -46,6 +46,13 @@ database operations are performed by the test suites.
 
 ## Authentication and recovery
 
+The Training Center entry is in the User Dashboard after normal Hub access-code
+login; it is not shown on the login screen. Existing Overseer management remains
+available in Overseer Mode. This follows the Hub's navigation gate; the study
+catalog API remains public, while private profile and management APIs retain
+their server-side authorization. A saved Training session does not bypass the
+normal Hub login screen after refresh.
+
 Training uses Supabase Auth. Registration creates an Auth user with a random
 internal address ending in `@training.invalid`, confirms that internal address
 server-side, and inserts a unique, case-insensitive callsign mapped to the Auth

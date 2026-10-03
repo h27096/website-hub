@@ -2,6 +2,7 @@
 const ROBCO_VERSION_HISTORY = {
   releases: [
     { version: 'v1.3', changes: [
+      'Moved Training Center access into the signed-in User Dashboard after normal Hub authentication.',
       'Added RobCo Training Center with cloud Personnel Files, secure one-time password recovery, and Overseer personnel management.',
       'Added subject/unit study sets, Featured Training, a shared question bank, manual editing, and previewed bulk/CSV/TSV import.',
       'Added Flashcards, Quiz, Reactor Rush, Terminal Hack, Vault Defense, and Caps Run with keyboard and touch controls.',
