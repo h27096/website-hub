@@ -1,0 +1,161 @@
+.training-dialog {
+  color: #78ff91;
+  background: #061009;
+  border: 1px solid #55ff55;
+  width: min(1050px, 94vw);
+  max-height: 92dvh;
+  padding: 20px;
+  box-sizing: border-box;
+  font: 16px/1.5 monospace;
+  overflow: auto;
+}
+.training-dialog::backdrop {
+  background: #000d;
+}
+.training-dialog * {
+  box-sizing: border-box;
+}
+.training-dialog button,
+.training-dialog input,
+.training-dialog select,
+.training-dialog textarea {
+  font: inherit;
+  color: inherit;
+  background: #0a1a10;
+  border: 1px solid #397c47;
+  border-radius: 3px;
+  padding: 10px;
+  max-width: 100%;
+}
+.training-dialog button {
+  cursor: pointer;
+  min-height: 44px;
+  margin: 4px;
+}
+.training-dialog button:hover,
+.training-dialog button:focus-visible {
+  background: #21482a;
+  outline: 2px solid #a8ffb7;
+}
+.training-dialog button:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+.training-dialog h2,
+.training-dialog h3 {
+  overflow-wrap: anywhere;
+}
+.training-dialog label {
+  display: block;
+  margin: 10px 0;
+}
+.training-dialog label input:not([type="checkbox"]),
+.training-dialog textarea,
+.training-dialog select {
+  display: block;
+  width: 100%;
+  margin-top: 5px;
+}
+.training-dialog textarea {
+  min-height: 90px;
+}
+.training-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  justify-content: space-between;
+  border-bottom: 1px solid #397c47;
+  padding-bottom: 12px;
+}
+.training-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(260px, 100%), 1fr));
+  gap: 14px;
+}
+.training-card {
+  padding: 15px;
+  border: 1px solid #397c47;
+  margin: 12px 0;
+  overflow-wrap: anywhere;
+}
+.training-featured {
+  border: 2px solid #afffb5;
+  background: #102b19;
+  padding: 16px;
+}
+.training-note {
+  color: #bdcbbf;
+}
+.training-status {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  padding: 10px 0;
+}
+.training-error {
+  color: #ffc18b;
+}
+.training-flash {
+  display: block;
+  width: 100%;
+  min-height: 200px;
+  font-size: 1.3rem !important;
+  white-space: pre-wrap;
+}
+.training-hud {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding: 12px;
+  background: #102b19;
+}
+.training-scene {
+  border: 1px solid #397c47;
+  min-height: 85px;
+  padding: 20px;
+  overflow: hidden;
+  white-space: pre-wrap;
+}
+.training-dialog progress {
+  width: 100%;
+  accent-color: #78ff91;
+}
+.training-dialog pre {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.training-dialog table {
+  width: 100%;
+  border-collapse: collapse;
+}
+.training-dialog th,
+.training-dialog td {
+  padding: 7px;
+  text-align: left;
+  border-bottom: 1px solid #397c47;
+  overflow-wrap: anywhere;
+}
+.training-dialog details {
+  padding: 8px;
+  border-bottom: 1px solid #397c47;
+}
+@media (max-width: 600px) {
+  .training-dialog {
+    padding: 12px;
+    font-size: 14px;
+  }
+  .training-toolbar {
+    align-items: stretch;
+  }
+  .training-dialog button {
+    margin: 3px;
+  }
+  .training-hud {
+    gap: 8px;
+  }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .training-scene {
+    transition: background 0.2s;
+  }
+}

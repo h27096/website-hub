@@ -16,3 +16,8 @@ For installations that applied the abandoned experimental browsing migrations,
 objects. It is optional for removing the visible feature, uses no CASCADE, and
 must be applied separately by the database owner. No live database changes are
 performed by this repository cleanup.
+# RobCo Training Center deployment
+
+For the v1.3 additive migration, Edge Function deployment, authentication,
+recovery, score validation and acceptance checks, see
+[SUPABASE_TRAINING_SETUP.md](SUPABASE_TRAINING_SETUP.md).
