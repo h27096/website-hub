@@ -1,0 +1,4 @@
+[functions.training-auth]
+# Signup, login and recovery are public; administrative actions verify the bearer
+# with Auth.getUser and the existing overseers table inside the function.
+verify_jwt = false

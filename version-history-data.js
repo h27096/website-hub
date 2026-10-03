@@ -1,6 +1,13 @@
 /* Canonical project release history. Edit in the repository; see AGENTS.md. */
 const ROBCO_VERSION_HISTORY = {
   releases: [
+    { version: 'v1.3', changes: [
+      'Added RobCo Training Center with cloud Personnel Files, secure one-time password recovery, and Overseer personnel management.',
+      'Added subject/unit study sets, Featured Training, a shared question bank, manual editing, and previewed bulk/CSV/TSV import.',
+      'Added Flashcards, Quiz, Reactor Rush, Terminal Hack, Vault Defense, and Caps Run with keyboard and touch controls.',
+      'Added persistent Training XP, cosmetic ranks, study progress, and study-set/game leaderboards with server-calculated scores.',
+      'Requires the additive Training Center migration and training-auth Edge Function deployment; multiplayer remains planned.'
+    ] },
     { version: 'v1.2', changes: [
       'Added three new Mini-Games: Memory Banks, Circuit Grid and Reactor Timing.',
       'Canceled and removed the unreleased Private Terminal feature and abandoned the experimental proxy code.'
@@ -24,6 +31,6 @@ const ROBCO_VERSION_HISTORY = {
     ] }
   ],
   roadmap: [
-    { version: 'v1.3', title: 'RobCo Training Center — Study sets, Flashcards, Quiz mode, Reactor Rush, Terminal Hack, Vault Defense, Caps Run, and single-player scores/leaderboards.' }
+    { version: 'v1.4', title: 'RobCo Live Training / Multiplayer — shared rooms, hosts, players, and synchronized training sessions.' }
   ]
 };

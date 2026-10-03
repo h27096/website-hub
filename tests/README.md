@@ -14,6 +14,10 @@ node tests/music-policies.cjs
 node tests/music.cjs
 node tests/radio.cjs
 node tests/hub-regression.cjs
+node tests/training-engine.cjs
+node tests/training-db.cjs
+node tests/training-auth.cjs
+node tests/training-browser.cjs
 ```
 
 All service calls are fixtures or local PostgreSQL, with no writes to production.
@@ -23,3 +27,8 @@ Supabase deployment and cross-device production checks remain a deployment step.
 No independent Radio upload fix is part of this release. Existing music tests are
 regressions only. The Employee Document suite now selects its own dialog because
 the shared Version History also adds a dialog to the document.
+
+Training's SQL and browser suites use isolated PGlite databases. Its Auth suite
+executes the real Edge handler with a mocked Auth transport, not a live service.
+For production setup and acceptance checks see `SUPABASE_TRAINING_SETUP.md`.
+The version-history suite now expects v1.3 released and v1.4 planned.

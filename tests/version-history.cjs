@@ -9,10 +9,10 @@ const vm = require('node:vm');
 const root = path.resolve(__dirname, '..');
 const data = vm.runInNewContext(fs.readFileSync(path.join(root, 'version-history-data.js'), 'utf8') + '\nJSON.stringify(ROBCO_VERSION_HISTORY)');
 const history = JSON.parse(data);
-assert.equal(history.releases[0].version, 'v1.2');
-assert.deepEqual(history.releases.map(r => r.version), ['v1.2','v1.1','v1.0','v0.5','v0.4','v0.3','v0.2','v0.1']);
-assert.deepEqual(history.roadmap.map(r=>r.version), ['v1.3']);
-assert.match(history.roadmap[0].title, /RobCo Training Center/);
+assert.equal(history.releases[0].version, 'v1.3');
+assert.deepEqual(history.releases.map(r => r.version), ['v1.3','v1.2','v1.1','v1.0','v0.5','v0.4','v0.3','v0.2','v0.1']);
+assert.deepEqual(history.roadmap.map(r=>r.version), ['v1.4']);
+assert.match(history.roadmap[0].title, /RobCo Live Training/);
 const versions = new Set();
 for (const release of history.releases) {
   assert.match(release.version, /^v\d+\.[0-9]$/);
@@ -52,15 +52,15 @@ const server = http.createServer((req,res) => {
       await button.click();
       const dialog = page.getByRole('dialog', {name:'VERSION / UPDATE LOG'});
       assert(await dialog.isVisible());
-      assert.equal(await dialog.locator('.version-history-current').textContent(), 'ROBCO WEBSITE HUB // VERSION v1.2');
+      assert.equal(await dialog.locator('.version-history-current').textContent(), 'ROBCO WEBSITE HUB // VERSION v1.3');
       const sections = dialog.locator('section');
       assert.equal(await sections.nth(0).locator('article').count(), history.releases.length);
       for (const release of history.releases) {
         const entry = sections.nth(0).locator('article').filter({has:page.getByRole('heading',{name:new RegExp('^'+release.version.replace('.', '\\.')+' //')})});
         assert.deepEqual(await entry.locator('li').allTextContents(), release.changes);
       }
-      assert(!/v1\.3/.test(await sections.nth(0).textContent()));
-      assert.match(await sections.nth(1).textContent(), /RobCo Training Center/);
+      assert(!/v1\.4/.test(await sections.nth(0).textContent()));
+      assert.match(await sections.nth(1).textContent(), /RobCo Live Training/);
       assert.equal(await sections.nth(1).locator('article').count(), 1);
       const text = await dialog.textContent();
       if (canonicalText) assert.equal(text,canonicalText); else canonicalText = text;
@@ -81,7 +81,7 @@ const server = http.createServer((req,res) => {
       assert(!(await dialog.isVisible()));
     }
     await page.goto(url);
-    await checkHistory(page.locator('.header button'), 'public');
+    await checkHistory(page.locator('.header .version-history-link'), 'public');
     await page.locator('#accessCode').fill('test-only'); await page.evaluate(() => login());
     await checkHistory(page.locator('#dashboard').getByRole('button',{name:'UPDATE LOG / VERSION HISTORY'}), 'user');
     await page.goto(url); await page.evaluate(() => showEmployeeLogin());
@@ -98,8 +98,8 @@ const server = http.createServer((req,res) => {
     await page.route('https://**',r => r.abort());
     await page.goto(url);
     const before = requests;
-    await checkHistory(page.locator('.header button'), 'offline-backend');
+    await checkHistory(page.locator('.header .version-history-link'), 'offline-backend');
     assert.equal(requests,before);
-    console.log('PASS: canonical data, public/three-role access, combined v1.2/history/v1.3 planned roadmap, no editor/backend dependency, preserved form, Escape/close/focus, desktop/mobile layout.');
+    console.log('PASS: canonical data, public/three-role access, combined v1.3/history/v1.4 planned roadmap, no editor/backend dependency, preserved form, Escape/close/focus, desktop/mobile layout.');
   } finally {await browser.close();}
 })().catch(error => {console.error(error);process.exitCode=1;}).finally(() => server.close());

@@ -10,6 +10,9 @@
   <link rel="stylesheet" href="version-history.css">
   <script src="version-history-data.js" defer></script>
   <script src="version-history.js" defer></script>
+  <link rel="stylesheet" href="training.css">
+  <script src="training-engine.js" defer></script>
+  <script src="training.js" defer></script>
 
   <style>
     :root {
@@ -225,6 +228,7 @@
 
     <div class="subtitle" data-hub-version>ROBCO WEBSITE HUB // VERSION LOADING</div>
     <button class="version-history-link" onclick="openVersionHistory()">UPDATE LOG / VERSION HISTORY</button>
+    <button onclick="openTraining()">ROBCO TRAINING CENTER</button>
   </div>
 
 
@@ -1464,6 +1468,8 @@ async function overseerLogin() {
       </button>
 
       <button onclick="openEmployeeDocument(true)">📄 MANAGE EMPLOYEE DOCUMENT</button>
+      <button onclick="openTraining('personnel')">TRAINING PERSONNEL</button>
+      <button onclick="openTraining('manage')">MANAGE TRAINING CENTER</button>
 
       <button onclick="showMusicManager()">
         📻 MANAGE RADIO MUSIC
