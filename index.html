@@ -296,7 +296,6 @@
       🎮 MINI-GAMES
     </button>
 
-    <button onclick="showPrivacyPreview()">🌐 <span id="privacyHomeStatus">PRIVATE TERMINAL // CHECKING STATUS</span></button>
     <button onclick="showUserPage('files')">
       📁 ROBCO FILES
     </button>
@@ -408,25 +407,6 @@
   </div>
   <div id="gameOutput" class="record-reader" role="region" aria-label="Game area">SELECT A GAME TO BEGIN.</div>
 </section>
-<section id="privateTerminal" class="hidden">
-  <button onclick="showUserPage('dashboard')">← RETURN TO WEBSITE HUB</button>
-  <h2>🌐 ROBCO PRIVATE TERMINAL</h2>
-  <p>Approved HTTPS destinations only. Isolated source text preview: scripts, images, forms and trackers do not run. This does not provide anonymity or bypass network restrictions.</p>
-  <p id="privacyStatus" role="status">CHECKING CONNECTION...</p>
-  <p id="privacyApproved"></p>
-  <form onsubmit="event.preventDefault(); loadPrivacyPreview()">
-    <label for="privacyUrl">HTTPS ADDRESS</label>
-    <input id="privacyUrl" type="url" autocomplete="off" spellcheck="false" maxlength="2048" placeholder="https://approved.example/page" required>
-    <button id="privacyGo" disabled>LOAD PREVIEW</button>
-  </form>
-  <div class="module-controls">
-    <button id="privacyBack" onclick="privacyMove(-1)" disabled>← BACK</button>
-    <button id="privacyForward" onclick="privacyMove(1)" disabled>FORWARD →</button>
-    <button id="privacyReload" onclick="privacyMove(0)" disabled>RELOAD</button>
-  </div>
-  <iframe id="privacyFrame" title="Isolated source text preview" sandbox="" referrerpolicy="no-referrer" style="width:100%;height:400px;border:1px solid var(--green);margin-top:16px;background:#010401"></iframe>
-  <p>Back/Forward keep up to 30 addresses in memory only while this screen is open. Leaving clears them. The destination sees the backend IP; network and hosting providers may see connections.</p>
-</section>
 <section id="radio" class="hidden">
   <button onclick="showUserPage('dashboard')">← BACK TO DASHBOARD</button>
   <h2>📻 ROBCO RADIO</h2>
@@ -467,8 +447,6 @@
 
 <script src="games.js"></script>
 <script src="modules.js"></script>
-<script src="proxy-config.js"></script>
-<script src="proxy-client.js"></script>
 <script src="radio.js"></script>
 <script src="music.js"></script>
 <script src="employee-document.js"></script>
@@ -580,7 +558,9 @@ async function login() {
 
   try {
 
-    const response = await privacyHubLogin(code);
+    const response = await databaseRequest('/rest/v1/rpc/use_access_code', {
+      method: 'POST', body: JSON.stringify({input_code: code})
+    });
 
     const result =
       await response.json();
@@ -590,7 +570,6 @@ async function login() {
       result.success
     ) {
 
-      privacySession = result.preview_token || null;
 
       message.textContent =
         "ACCESS GRANTED.";
@@ -894,13 +873,12 @@ const managedWebsites =
 
   function logout() {
     stopRobcoGame();
-    logoutPrivacy();
 
     websites = [];
 
     stopRobcoRadio();
 
-    ["dashboard", "holotapes", "files", "games", "radio", "privateTerminal"].forEach(id =>
+    ["dashboard", "holotapes", "files", "games", "radio"].forEach(id =>
       document.getElementById(id).classList.add("hidden")
     );
 
@@ -1983,7 +1961,6 @@ async function reactivateCode(id) {
 
   function logoutOverseer() {
   stopRobcoGame();
-  logoutPrivacy();
 
   window.overseerSession = null;
 
@@ -3636,8 +3613,7 @@ async function reactivateCode(id) {
 
   function showUserPage(page) {
     if (page !== 'games') stopRobcoGame();
-    if (page !== 'privateTerminal') stopPrivacyPreview();
-    const sections = ['dashboard', 'hub', 'holotapes', 'files', 'games', 'radio', 'privateTerminal'];
+    const sections = ['dashboard', 'hub', 'holotapes', 'files', 'games', 'radio'];
     if (page === 'dashboard') {
       stopRobcoRadio();
       sections.forEach(id => document.getElementById(id).classList.toggle('hidden', id !== 'dashboard'));
@@ -3655,7 +3631,6 @@ async function reactivateCode(id) {
       loadUserAnnouncements();
     } else if (page === 'holotapes') renderHolotapes();
     else if (page === 'files') renderFiles();
-    else if (page === 'privateTerminal') openPrivacyPage();
     else if (page === 'radio') { updateRadioDisplay(); refreshRadioLibrary(); }
   }
 
@@ -3698,7 +3673,6 @@ function openUserSide() {
 
 function returnToOverseer() {
   stopRobcoGame();
-  stopPrivacyPreview();
   stopRobcoRadio();
 
   document
@@ -3709,7 +3683,7 @@ function returnToOverseer() {
     .getElementById("hub")
     .classList.add("hidden");
 
-  ["holotapes", "files", "games", "radio", "privateTerminal"].forEach(id => document.getElementById(id).classList.add("hidden"));
+  ["holotapes", "files", "games", "radio"].forEach(id => document.getElementById(id).classList.add("hidden"));
 
   document
     .getElementById("loginScreen")

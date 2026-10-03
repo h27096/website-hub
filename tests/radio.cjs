@@ -23,7 +23,7 @@ const server = http.createServer((req,res) => {
     await page.route('https://*.supabase.co/**', route => {
       const url = route.request().url();
       let data = [];
-      if (url.includes('use_access_code') || url.includes('privacy_preview_login')) data = {success:true};
+      if (url.includes('use_access_code')) data = {success:true};
       if (url.includes('employee_login')) data = true;
       if (url.includes('/auth/v1/token')) data = {user:{id:'test'}, access_token:'test-token'};
       if (url.includes('/overseers?')) data = [{user_id:'test'}];

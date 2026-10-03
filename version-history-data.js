@@ -2,7 +2,8 @@
 const ROBCO_VERSION_HISTORY = {
   releases: [
     { version: 'v1.2', changes: [
-      'Added three new Mini-Games: Memory Banks, Circuit Grid and Reactor Timing.'
+      'Added three new Mini-Games: Memory Banks, Circuit Grid and Reactor Timing.',
+      'Canceled and removed the unreleased Private Terminal feature and abandoned the experimental proxy code.'
     ] },
     { version: 'v1.1', changes: [
       'Improved the Radio/Music system.',
@@ -22,5 +23,7 @@ const ROBCO_VERSION_HISTORY = {
       'Added safety functions.'
     ] }
   ],
-  roadmap: []
+  roadmap: [
+    { version: 'v1.3', title: 'RobCo Training Center — Study sets, Flashcards, Quiz mode, Reactor Rush, Terminal Hack, Vault Defense, Caps Run, and single-player scores/leaderboards.' }
+  ]
 };

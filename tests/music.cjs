@@ -32,7 +32,7 @@ async function setup(page) {
     const authorized=request.headers().authorization==='Bearer overseer-test';
     if(url.pathname.includes('/auth/v1/token')) return reply({user:{id:'overseer'},access_token:'overseer-test'});
     if(url.pathname.includes('/overseers')) return reply([{user_id:'overseer'}]);
-    if(url.pathname.includes('/rpc/use_access_code') || url.pathname.includes('/rpc/privacy_preview_login')) return reply({success:true});
+    if(url.pathname.includes('/rpc/use_access_code')) return reply({success:true});
     if(url.pathname.includes('/rpc/radio_')) {
       if (!authorized) return reply({message:'denied'},403);
       const name=url.pathname.split('/').pop(), body=JSON.parse(request.postData() || '{}');

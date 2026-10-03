@@ -7,6 +7,11 @@
 
 ## v1.2 — More Games
 
+- Canceled the unreleased Private Terminal and removed the abandoned experimental
+  browsing UI, client, backend, and configuration. Optional dedicated-object
+  database cleanup is provided; existing Hub features and data are preserved.
+- Restored v1.3 — RobCo Training Center as planned work, without implementing it.
+
 - Added three new Mini-Games: Memory Banks, Circuit Grid and Reactor Timing.
 
 ## v1.1 — Better Music on Radio

@@ -1,17 +1,18 @@
 # RobCo Website Hub
 
-The current version is defined in `version-history-data.js`. This release combines
-expanded games, Private Terminal and persistent Overseer proxy controls.
-
-The static Hub remains on GitHub Pages. Private Terminal extends the original
-approved-destination source-text preview backend; it requires separate HTTPS
-hosting and the included Supabase migrations. It is not deployed or configured by
-default. See [Private Terminal setup](PRIVATE_TERMINAL_SETUP.md) for exact steps,
-authorization, security boundaries and the production handoff checklist.
+The current version and upcoming roadmap are defined in `version-history-data.js`.
+The static Hub runs on GitHub Pages with its existing Supabase integration.
 
 Games: Codebreaker, Signal Match, Memory Banks, Circuit Grid and Reactor Timing.
 All offer restart/reset and work with keyboard, mouse or touch.
 
 See [release history](version-history-data.js), [development instructions](AGENTS.md)
-and [tests](tests/README.md). Earlier Employee Document and Radio setup instructions
-remain available in their existing files. No separate next release is announced.
+and [tests](tests/README.md). Employee Document and Radio setup instructions
+remain available in their existing files. The next planned feature is
+v1.3 — RobCo Training Center; implementation has not started.
+
+For installations that applied the abandoned experimental browsing migrations,
+`supabase/migrations/20261004_remove_canceled_proxy.sql` removes only their dedicated
+objects. It is optional for removing the visible feature, uses no CASCADE, and
+must be applied separately by the database owner. No live database changes are
+performed by this repository cleanup.

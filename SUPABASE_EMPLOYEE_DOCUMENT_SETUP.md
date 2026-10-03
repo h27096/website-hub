@@ -10,7 +10,7 @@ The Employee terminal retains its website-request form and adds **ROBCO EMPLOYEE
 4. Open a second new query. Paste the entire supplied **employee-document-seed.private.sql** file and click **Run** as `postgres`.
 5. Refresh the Website Hub after its GitHub Pages deployment completes. Log in as an Employee and open **ROBCO EMPLOYEE DOCUMENT**.
 
-The migration only creates this feature's tables/functions and grants. It does not reset or modify existing employees, Overseers, access codes, websites, requests, announcements, Radio, Storage, or proxy code. Both SQL files can be run again: the seed never overwrites an existing document or revisions.
+The migration only creates this feature's tables/functions and grants. It does not reset or modify existing employees, Overseers, access codes, websites, requests, announcements, Radio or Storage. Both SQL files can be run again: the seed never overwrites an existing document or revisions.
 
 The private seed is intentionally **not in this public repository** because the source DOCX includes employee/community access codes. Keep the supplied seed private; do not upload it to GitHub Pages, attach it to public issues, or commit it. The original DOCX is not published either. Only the source logo is a public static asset.
 

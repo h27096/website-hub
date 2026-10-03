@@ -10,7 +10,6 @@ const server=http.createServer((req,res)=>{
 (async()=>{
   await new Promise(r=>server.listen(0,'127.0.0.1',r));
   const browser=await chromium.launch({headless:true,...(process.env.BROWSER_CHANNEL?{channel:process.env.BROWSER_CHANNEL}:{})});
-  let enabled=false, unavailable=false, migrationMissing=false, deniedChange=false, previewCalls=0;
   const contexts=[];
   const errors=[];
   try {
@@ -18,30 +17,13 @@ const server=http.createServer((req,res)=>{
       const context=await browser.newContext({viewport:mobile?{width:390,height:844}:{width:1280,height:900},hasTouch:mobile});contexts.push(context);
       await context.route('https://cdn.jsdelivr.net/**',r=>r.fulfill({contentType:'text/javascript',body:'window.supabase={createClient:()=>({})};'}));
       await context.route('https://*.supabase.co/**',r=>{
-        const request=r.request(), name=new URL(request.url()).pathname.split('/').pop(), body=JSON.parse(request.postData()||'{}');
-        const admin=request.headers().authorization==='Bearer test-admin';
+        const request=r.request(), name=new URL(request.url()).pathname.split('/').pop();
+        assert(!/privacy|proxy/i.test(request.url()), 'Canceled feature must make no service requests');
         const reply=(data,status=200)=>r.fulfill({status,contentType:'application/json',body:JSON.stringify(data)});
-        if(name==='privacy_preview_login') return migrationMissing?reply({code:'PGRST202'},404):reply({success:true,preview_token:'a'.repeat(64)});
         if(name==='use_access_code') return reply({success:true});
-        if(name==='privacy_preview_status') return reply(enabled);
-        if(name==='privacy_preview_config') return admin?reply({enabled,hosts:['example.com']}):reply({},403);
-        if(name==='privacy_preview_set_enabled') {if(!admin||deniedChange)return reply({},403);enabled=body.new_enabled;return reply(null);}
-        if(name==='privacy_preview_logout') return reply(null);
         if(name==='token') return reply({user:{id:'admin'},access_token:'test-admin'});
         if(name==='overseers') return reply([{user_id:'admin'}]);
         return reply([]);
-      });
-      await context.route('https://preview.example/**',async r=>{
-        if(unavailable)return r.abort();
-        const request=r.request();const reply=(data,status=200)=>r.fulfill({status,contentType:'application/json',body:JSON.stringify(data)});
-        if(!request.headers()['x-robco-session']&&!request.headers().authorization) return reply({error:'Sign in required'},401);
-        if(request.url().endsWith('/status'))return reply({enabled,hosts:['example.com']});
-        previewCalls++;
-        if(!enabled)return reply({error:'Preview disabled by Overseer'},403);
-        const target=JSON.parse(request.postData()).url;
-        if(new URL(target).hostname!=='example.com')return reply({error:'HTTPS destination is not approved'},400);
-        await new Promise(r=>setTimeout(r,60));
-        return reply({url:target,content:'<script>parent.hacked=true</script> Preview '+target});
       });
       const page=await context.newPage();page.on('pageerror',e=>errors.push(e.message));
       await page.goto(`http://127.0.0.1:${server.address().port}`);
@@ -95,33 +77,16 @@ const server=http.createServer((req,res)=>{
       stopRobcoGame();button.click();const after=pending.size;
       window.setTimeout=set;window.clearTimeout=clear;return {before,after};
     });assert.deepEqual(cleanup,{before:1,after:0});
-    // Disabled state, setup state and unavailable backend.
-    await page.evaluate(()=>showUserPage('dashboard'));await page.waitForFunction(()=>document.getElementById('privacyHomeStatus').textContent.includes('OFFLINE BY ORDER'));
-    await page.evaluate(()=>showPrivacyPreview());await page.waitForFunction(()=>document.getElementById('privacyStatus').textContent.includes('OFFLINE BY ORDER'));
-    assert(await page.locator('#privacyGo').isDisabled());
-    enabled=true;await page.evaluate(()=>openPrivacyPage());await page.waitForFunction(()=>document.getElementById('privacyStatus').textContent.includes('BACKEND NOT CONFIGURED'));
-    await page.evaluate(()=>{window.ROBCO_PROXY_URL='https://preview.example';openPrivacyPage();});await page.waitForFunction(()=>privacyAvailable);
-    const prior=previewCalls;await page.evaluate(()=>loadPrivacyPreview('http://example.com'));assert.equal(previewCalls,prior);
-    await page.evaluate(()=>loadPrivacyPreview('https://unapproved.example'));assert.match(await page.locator('#privacyStatus').textContent(),/not approved/);
-    await page.locator('#privacyUrl').fill('https://example.com/one');await page.locator('#privacyGo').click();await page.waitForFunction(()=>privacyIndex===0);
-    assert.equal(await page.evaluate(()=>window.hacked),undefined);
-    assert.equal(await page.locator('#privacyFrame').getAttribute('sandbox'),'');
-    await page.evaluate(()=>loadPrivacyPreview('https://example.com/two'));assert.equal(await page.evaluate(()=>privacyIndex),1);
-    await page.locator('#privacyBack').click();await page.waitForFunction(()=>privacyIndex===0);assert.match(await page.locator('#privacyUrl').inputValue(),/one$/);
-    await page.locator('#privacyForward').click();await page.waitForFunction(()=>privacyIndex===1);
-    const beforeReload=previewCalls;await page.locator('#privacyReload').click();await page.waitForFunction(()=>privacyController===null);assert.equal(previewCalls,beforeReload+1);
-    unavailable=true;await page.evaluate(()=>loadPrivacyPreview('https://example.com'));assert.match(await page.locator('#privacyStatus').textContent(),/unreachable/);unavailable=false;
-    // Overseer controls and a second independent session observe the same setting.
-    const other=await setup(true);await other.evaluate(()=>{window.ROBCO_PROXY_URL='https://preview.example';showPrivacyPreview();});await other.waitForFunction(()=>privacyAvailable);
-    await page.evaluate(()=>{showUserPage('dashboard');returnToOverseer();window.overseerSession={access_token:'test-admin'};showOverseerPanel();showPrivacyControl();});
-    await page.getByRole('button',{name:'DISABLE PRIVATE TERMINAL',exact:true}).waitFor();
-    page.once('dialog',dialog=>dialog.accept());await page.locator('#privacyToggle').click();await page.getByRole('button',{name:'ENABLE PRIVATE TERMINAL',exact:true}).waitFor();
-    assert.equal(enabled,false);await other.evaluate(()=>loadPrivacyPreview('https://example.com'));assert.match(await other.locator('#privacyStatus').textContent(),/disabled/);
-    await other.evaluate(()=>openPrivacyPage());await other.waitForFunction(()=>document.getElementById('privacyStatus').textContent.includes('OFFLINE BY ORDER'));
-    await page.evaluate(()=>showPrivacyControl());await page.getByRole('button',{name:'ENABLE PRIVATE TERMINAL',exact:true}).waitFor();
-    deniedChange=true;await page.locator('#privacyToggle').click();await page.waitForFunction(()=>document.getElementById('privacyControlMessage').textContent.includes('rejected'));assert.equal(enabled,false);deniedChange=false;
-    await page.locator('#privacyToggle').click();await page.getByRole('button',{name:'DISABLE PRIVATE TERMINAL',exact:true}).waitFor();
-    await other.evaluate(()=>openPrivacyPage());await other.waitForFunction(()=>privacyAvailable);
+    // Removed screens and handlers cannot be reached by stale navigation.
+    await page.evaluate(()=>showUserPage('dashboard'));
+    assert.equal(await page.locator('#privateTerminal, #privacyHomeStatus').count(),0);
+    assert.equal(await page.locator('[onclick]').evaluateAll(nodes=>nodes.filter(n=>/privacy|proxy/i.test(n.getAttribute('onclick'))).length),0);
+    const before=await page.locator('#dashboard').isVisible();
+    await page.evaluate(()=>showUserPage('privateTerminal'));
+    assert.equal(await page.locator('#dashboard').isVisible(),before);
+    assert.equal(await page.evaluate(()=>typeof showPrivacyPreview),'undefined');
+    assert.equal(await page.evaluate(()=>typeof showPrivacyControl),'undefined');
+    const other=await setup(true);
     // Touch control and narrow viewport smoke checks.
     await other.evaluate(()=>showUserPage('games'));
     for(const name of ['MEMORY BANKS','CIRCUIT GRID','REACTOR TIMING']) {
@@ -134,10 +99,7 @@ const server=http.createServer((req,res)=>{
       await other.getByRole('button',{name:'RESTART / RESET'}).tap();
     }
     await other.screenshot({path:path.join(root,'../v12-mobile.png'),fullPage:true});
-    await other.evaluate(()=>{showPrivacyPreview();showUserPage('dashboard');});
-    assert.equal(await other.evaluate(()=>privacyHistory.length),0);assert.equal(await other.evaluate(()=>privacyPoll),null);
-    migrationMissing=true;await other.reload();await other.locator('#accessCode').fill('legacy');await other.evaluate(()=>login());assert(await other.locator('#dashboard').isVisible());assert.equal(await other.evaluate(()=>privacySession),null);
     assert.deepEqual(errors,[]);
-    console.log('PASS: five games, wins/resets, keyboard/touch, timer/listener cleanup; Home, setup/offline/validation/loading, isolated content, history, Overseer toggle/error, second session, re-enable and legacy login fallback.');
+    console.log('PASS: five games, keyboard/touch, cleanup, Dashboard, removed screen/handler checks and no console errors.');
   } finally {await browser.close();server.close();}
 })().catch(e=>{console.error(e);process.exitCode=1;});

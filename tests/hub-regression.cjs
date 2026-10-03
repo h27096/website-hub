@@ -18,7 +18,6 @@ const server=http.createServer((req,res)=>{const file=path.resolve(root,'.'+(req
       calls.push(name);
       if(name==='token')return reply({user:{id:'admin'},access_token:'regression-admin'});
       if(name==='overseers')return reply([{user_id:'admin'}]);
-      if(name==='privacy_preview_status')return reply(false);
       if(name==='websites')return reply([]);
       if(name==='get_enabled_managed_websites')return reply(sites.filter(s=>s.enabled));
       if(name==='get_visible_announcements')return reply(announcements);
