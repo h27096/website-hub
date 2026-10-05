@@ -10,6 +10,40 @@
     profile = null,
     viewId = 0,
     keyHandler = null;
+  const secrets = new Set([SUPABASE_KEY]);
+  function safe(value) {
+    let text = String(value || "Unknown error");
+    for (const secret of secrets) if (secret) text = text.split(secret).join("[REDACTED]");
+    return text.replace(/Bearer\s+\S+|eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+|sb_(?:secret|publishable)_\S+|\b[a-f0-9]{64}\b/gi, "[REDACTED]")
+      .replace(/((?:password|access_token|refresh_token|recovery_code|service_role_key)\s*[=:]\s*)[^\s,;]+/gi, "$1[REDACTED]")
+      .replace(/[\r\n\x00-\x1f]/g, " ").slice(0, 600);
+  }
+  function failure(operation, error = {}, http) {
+    const sanitizedCode = safe(error.code || "UNKNOWN");
+    const code = /^[A-Za-z0-9_-]{1,64}$/.test(sanitizedCode) ? sanitizedCode : "UNKNOWN";
+    let hint = "";
+    if (code === "NOT_FOUND" && operation.includes("training-auth")) hint = " Deploy the training-auth Edge Function to the existing project; SQL alone does not deploy it.";
+    else if (["PGRST202", "42883", "42P01"].includes(code)) hint = " Required RPC/table/signature is missing; check the deployed schema and schema cache.";
+    else if (code === "42501") hint = " Access denied: check account status and RPC grants/RLS.";
+    const upstream = Number.isInteger(error.upstream_status) ? ` // upstream HTTP ${error.upstream_status}` : "";
+    const httpStatus = Number(http || error.status);
+    const message = `${safe(operation)} failed // HTTP ${httpStatus >= 100 && httpStatus <= 599 ? httpStatus : "unavailable"}${upstream} // ${code}: ${safe(error.error || error.message)}${hint}`;
+    // Only a sanitized string, never request bodies, headers, sessions or Error objects.
+    console.warn("[Training] " + message);
+    return Error(message);
+  }
+  async function request(operation, path, options) {
+    let response;
+    try { response = await fetch(SUPABASE_URL + path, options); }
+    catch {
+      throw failure(operation, {code: "NETWORK_OR_CORS", message: "No readable Supabase response. The request may have failed before reaching Supabase, or the browser blocked it (network/CORS). Check function deployment and allowed origin."});
+    }
+    let data;
+    try { data = await response.json(); }
+    catch { throw failure(operation, {code: "INVALID_RESPONSE", message: "Supabase returned a non-JSON response."}, response.status); }
+    if (!response.ok) throw failure(data.operation ? `${operation} / ${safe(data.operation)}` : operation, data, response.status);
+    return data;
+  }
   function el(tag, text, cls) {
     const n = document.createElement(tag);
     if (text !== undefined) n.textContent = text;
@@ -17,7 +51,7 @@
     return n;
   }
   function say(text, error = false) {
-    status.textContent = text;
+    status.textContent = error ? safe(text) : text;
     status.className = "training-status" + (error ? " training-error" : "");
   }
   function button(text, fn, parent = body) {
@@ -28,7 +62,7 @@
       try {
         await fn();
       } catch (e) {
-        say(e.message, true);
+        say(safe(e.message), true);
       } finally {
         n.disabled = false;
       }
@@ -78,15 +112,30 @@
       });
     return client;
   }
+  async function authOperation(operation, fn) {
+    try {
+      const result = await fn();
+      if (result.error) throw result.error;
+      return result;
+    } catch (error) { throw failure(operation, error); }
+  }
   async function token() {
-    const { data, error } = await authClient().auth.getSession();
-    if (error) throw error;
+    const { data } = await authOperation("Existing Training session detection", () => authClient().auth.getSession());
+    if (data.session) {
+      secrets.add(data.session.access_token);
+      secrets.add(data.session.refresh_token);
+    }
     return data.session?.access_token;
+  }
+  async function signOut() {
+    await authOperation("Training sign-out", () => authClient().auth.signOut());
+    profile = null;
   }
   async function rpc(name, args = {}, admin = false) {
     const jwt = admin ? window.overseerSession?.access_token : await token();
     if (admin && !jwt) throw Error("Sign in to Overseer Mode first.");
-    const r = await fetch(SUPABASE_URL + "/rest/v1/rpc/" + name, {
+    if (jwt) secrets.add(jwt);
+    return request("RPC " + name, "/rest/v1/rpc/" + name, {
       method: "POST",
       headers: {
         apikey: SUPABASE_KEY,
@@ -95,18 +144,17 @@
       },
       body: JSON.stringify(args),
     });
-    const data = await r.json();
-    if (!r.ok)
-      throw Error(
-        data.message ||
-          "Training unavailable. Apply the Training migration and deploy training-auth.",
-      );
-    return data;
   }
   async function edge(args, admin = false) {
     const jwt = admin ? window.overseerSession?.access_token : await token();
     if (admin && !jwt) throw Error("Sign in to Overseer Mode first.");
-    const r = await fetch(SUPABASE_URL + "/functions/v1/training-auth", {
+    if (jwt) secrets.add(jwt);
+    // GET sends no credentials/body and does not consume attempt budgets. Unlike
+    // POST's preflight, a missing function's gateway response is readable here.
+    await request("training-auth availability", "/functions/v1/training-auth", {
+      method: "GET", headers: {apikey: SUPABASE_KEY},
+    });
+    return request("training-auth " + args.action, "/functions/v1/training-auth", {
       method: "POST",
       headers: {
         apikey: SUPABASE_KEY,
@@ -115,10 +163,6 @@
       },
       body: JSON.stringify(args),
     });
-    const data = await r.json();
-    if (!r.ok)
-      throw Error(data.error || "Training authentication unavailable.");
-    return data;
   }
   function shell() {
     if (!dialog) {
@@ -153,20 +197,26 @@
       dialog.showModal();
     }
   }
-  async function loadProfile() {
+  async function loadProfile(requireSession = false) {
     profile = null;
-    if (await token()) profile = await rpc("training_profile");
+    if (await token()) {
+      profile = await rpc("training_profile");
+      if (!profile) throw failure("Training profile loading", {code: "PROFILE_MISSING", message: "Auth session exists but no Training profile was returned."});
+    } else if (requireSession) {
+      throw failure("Session persistence after successful Auth", {code: "SESSION_MISSING", message: "Auth succeeded but no local Training session is available. Sign in again; do not create another account."});
+    }
     return profile;
   }
-  async function account() {
+  async function account(authenticated = "") {
     const id = reset("PERSONNEL FILE");
     try {
-      await loadProfile();
+      await loadProfile(!!authenticated);
     } catch (e) {
-      say(e.message, true);
+      if (id !== viewId) return;
+      say((authenticated ? authenticated + " Auth succeeded; Training profile loading failed. Use RETRY PROFILE; do not create another account. " : "") + safe(e.message), true);
+      button("RETRY PROFILE", () => account(authenticated));
       button("SIGN OUT / CHANGE PERSONNEL FILE", async () => {
-        await authClient().auth.signOut();
-        profile = null;
+        await signOut();
         await account();
       });
       return;
@@ -188,8 +238,7 @@
         ),
       );
       button("SIGN OUT", async () => {
-        await authClient().auth.signOut();
-        profile = null;
+        await signOut();
         await account();
       });
       stats(profile.statistics, body);
@@ -205,17 +254,26 @@
       password = field("Password (12–128 characters)", "", "password");
     name.autocomplete = "username";
     password.autocomplete = "current-password";
+    let submitting = false;
     async function submit(action) {
-      const data = await edge({
-        action,
-        callsign: name.value.trim(),
-        password: password.value,
-      });
-      if (!data.session) throw Error("No session returned");
-      const { error } = await authClient().auth.setSession(data.session);
-      if (error) throw error;
-      password.value = "";
-      await account();
+      if (submitting) return;
+      submitting = true;
+      try {
+        if (!/^[A-Za-z0-9_-]{3,24}$/.test(name.value.trim()) || password.value.length < 12 || password.value.length > 128)
+          throw Error("Use a 3–24 character callsign (letters, numbers, _ or -) and a 12–128 character password.");
+        secrets.add(password.value);
+        const data = await edge({
+          action,
+          callsign: name.value.trim(),
+          password: password.value,
+        });
+        if (!data.session?.access_token || !data.session?.refresh_token) throw failure("Auth session response", {message: "No usable session returned. If creation completed, sign in rather than creating again."});
+        secrets.add(data.session.access_token);
+        secrets.add(data.session.refresh_token);
+        await authOperation("Session installation (" + (action === "signup" ? "Personnel File created; " : "") + "Auth succeeded; sign in again)", () => authClient().auth.setSession(data.session));
+        password.value = "";
+        await account(action === "signup" ? "Personnel File created." : "Signed in.");
+      } finally { submitting = false; }
     }
     button("SIGN INTO PERSONNEL FILE", () => submit("login"));
     button("CREATE PERSONNEL FILE", () => submit("signup"));
@@ -234,6 +292,8 @@
       pass = field("New password (12–128 characters)", "", "password");
     pass.autocomplete = "new-password";
     button("RESET PASSWORD", async () => {
+      secrets.add(pass.value);
+      secrets.add(code.value);
       const r = await edge({
         action: "recover",
         callsign: name.value.trim(),

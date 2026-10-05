@@ -2,6 +2,7 @@
 const ROBCO_VERSION_HISTORY = {
   releases: [
     { version: 'v1.3', changes: [
+      'Stabilized Personnel File diagnostics: detect missing training-auth deployment, report sanitized Auth/RPC/profile failures, and preserve successful account creation when later steps fail.',
       'Moved Training Center access into the signed-in User Dashboard after normal Hub authentication.',
       'Added RobCo Training Center with cloud Personnel Files, secure one-time password recovery, and Overseer personnel management.',
       'Added subject/unit study sets, Featured Training, a shared question bank, manual editing, and previewed bulk/CSV/TSV import.',
