@@ -22,6 +22,7 @@ const { setup, admin, user } = require("./training-db.cjs");
   ]);
   const passwords = new Map();
   let failPassword = false;
+  let failProfile = false, failLogin = false, failCleanup = false;
   function from(table) {
     let operation = "select",
       data,
@@ -67,6 +68,8 @@ const { setup, admin, user } = require("./training-db.cjs");
             if (operation === "select")
               query = `select ${columns} from public.${table}`;
             else {
+              if (table === "training_profiles" && operation === "insert" && failProfile)
+                throw Object.assign(Error("permission denied for table training_profiles"), {code: "42501"});
               const keys = Object.keys(data);
               params.push(...Object.values(data));
               query =
@@ -108,6 +111,7 @@ const { setup, admin, user } = require("./training-db.cjs");
         return { data: { user: u }, error: null };
       },
       async deleteUser(id) {
+        if (failCleanup) return {data: null, error: Error("cleanup unavailable")};
         users.delete(id);
         passwords.delete(id);
         await db.query("delete from auth.users where id=$1", [id]);
@@ -137,6 +141,7 @@ const { setup, admin, user } = require("./training-db.cjs");
       };
     },
     async signInWithPassword(b) {
+      if (failLogin) return {data: null, error: Object.assign(Error("Auth unavailable password=" + b.password), {status: 503, code: "unexpected_failure"})};
       const u = [...users.values()].find((u) => u.email === b.email);
       return u && passwords.get(u.id) === b.password
         ? {
@@ -204,6 +209,34 @@ const { setup, admin, user } = require("./training-db.cjs");
     return { status: r.status, body: await r.json() };
   }
   try {
+    const health = await handler(new Request("https://local.test", {headers: {origin: "https://hub.test"}}));
+    assert.equal(health.status, 200);
+    assert.deepEqual(await health.json(), {ready: true});
+    assert.equal((await db.query("select count(*)::int n from public.training_limits")).rows[0].n, 0);
+    failProfile = true;
+    const failedInsert = await call({action: "signup", callsign: "Rollback", password: "a-long-fixture-password"});
+    assert.equal(failedInsert.body.code, "42501");
+    assert.equal(failedInsert.body.operation, "Training profile creation");
+    assert.equal(failedInsert.body.identity_created, false);
+    assert.equal(users.size, 2);
+    failCleanup = true;
+    const orphan = await call({action: "signup", callsign: "Repair", password: "a-long-fixture-password"});
+    assert.equal(orphan.body.code, "PROFILE_CLEANUP_FAILED");
+    assert.equal(orphan.body.identity_created, true);
+    assert.equal(orphan.body.profile_created, false);
+    failCleanup = failProfile = false;
+    // Remove only the isolated fixture orphan, not production accounts.
+    for (const id of users.keys()) if (![admin,user].includes(id)) await auth.admin.deleteUser(id);
+    failLogin = true;
+    const partial = await call({action: "signup", callsign: "CreatedAlready", password: "a-long-fixture-password"});
+    assert.equal(partial.status, 503);
+    assert.equal(partial.body.identity_created, true);
+    assert.equal(partial.body.profile_created, true);
+    assert.equal(partial.body.upstream_status, 503);
+    assert.match(partial.body.error, /Sign in with the same callsign/);
+    assert(!partial.body.error.includes("a-long-fixture-password"));
+    failLogin = false;
+    assert.equal((await call({action: "login", callsign: "CreatedAlready", password: "a-long-fixture-password"})).status, 200);
     const created = await call({
       action: "signup",
       callsign: "CloudUser",
@@ -212,6 +245,10 @@ const { setup, admin, user } = require("./training-db.cjs");
     assert.equal(created.status, 200);
     const id = created.body.session.access_token.slice(6);
     assert(users.get(id).email.endsWith("@training.invalid"));
+    const profile = await as("authenticated", id, "training_profile");
+    assert.equal(profile.callsign, "CloudUser");
+    assert.equal(profile.xp, 0);
+    assert.equal(profile.rank, "TRAINEE");
     assert.equal(
       (
         await call({
@@ -302,16 +339,9 @@ const { setup, admin, user } = require("./training-db.cjs");
       "CloudUser",
     );
     await as("authenticated", admin, "training_moderate", [id, "disable", ""]);
-    assert.equal(
-      (
-        await call({
-          action: "login",
-          callsign: "CloudUser",
-          password: "a-new-fixture-password",
-        })
-      ).status,
-      400,
-    );
+    const disabled = await call({action: "login", callsign: "CloudUser", password: "a-new-fixture-password"});
+    assert.equal(disabled.status, 400);
+    assert.equal(disabled.body.code, "ACCOUNT_DISABLED");
     await as("authenticated", admin, "training_moderate", [id, "enable", ""]);
     const failure = await call(
       { action: "issue-reset", user_id: id },

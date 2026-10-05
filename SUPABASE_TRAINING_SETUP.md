@@ -4,7 +4,48 @@ This is one v1.3 release. v1.4 remains **RobCo Live Training / Multiplayer**.
 Deploy the backend before publishing the changed static files. No production
 database operations are performed by the test suites.
 
-## Exact deployment steps
+## v1.3 stabilization: migration already applied
+
+The production diagnostic on October 5, 2026 found the configured project reachable:
+Auth settings and `training_catalog(p_admin=false)` returned HTTP 200, while both
+GET and OPTIONS `/functions/v1/training-auth` returned HTTP 404 with
+`NOT_FOUND: Requested function was not found`. The failed POST preflight is why
+Safari reports `Load failed` before Auth or profile creation. SQL migration and
+Edge Function deployment are separate operations. **No corrective SQL is needed
+for this failure. Do not rerun the already-applied migration.**
+
+From an updated checkout of this repository, deploy the fixed function:
+
+```sh
+supabase login
+supabase secrets set --project-ref jkvjwrylzbhtrjesgrxi TRAINING_ALLOWED_ORIGINS=https://tempoary.robco.pizzamonster.org,https://h27096.github.io
+supabase functions deploy training-auth --project-ref jkvjwrylzbhtrjesgrxi --no-verify-jwt
+```
+
+Add any other actual Hub origin to the comma-separated list before running the
+secrets command (it replaces the list). Origins have no trailing slash or path.
+Publish the updated static files through the existing GitHub Pages workflow.
+GET `training-auth` now reports readiness without creating accounts or consuming
+rate limits. A public GET sends only the publishable API key; administrative POST
+operations still verify the Overseer JWT and membership inside the function.
+
+Diagnostics distinguish function availability, Auth exchange, profile lookup,
+profile creation, session installation, and the authenticated `training_profile`
+RPC. HTTP status, upstream Auth status where provided, and sanitized error codes
+are shown. A network/CORS failure has no readable HTTP status and is reported as
+such, rather than asserting the request definitely never reached Supabase.
+No request bodies, headers, sessions, passwords or recovery secrets are logged.
+If creation succeeds but session/profile loading fails, sign in with the same
+credentials or use RETRY PROFILE; do not register again. Failed profile inserts
+attempt Auth rollback and explicitly report rollback failure requiring repair.
+
+RLS remains enabled. Direct Training table access remains revoked for browser
+roles; own-account data is returned only by authenticated, checked RPCs.
+The deployed SQL function signatures match the frontend and Edge handler. Local
+regression tests must stay isolated; production account acceptance checks happen
+only after this function is deployed.
+
+## Initial deployment steps (new installations only)
 
 1. Back up the existing Supabase database using your normal backup procedure.
    Use the existing project `jkvjwrylzbhtrjesgrxi`. Do not create or reset a project.

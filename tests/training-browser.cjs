@@ -82,6 +82,7 @@ const root = path.resolve(__dirname, "..");
         if (name === "use_access_code") {
           result = {success: body.input_code === "normal-test-password"};
         } else if (name === "training-auth") {
+          if (req.method() === "GET") return r.fulfill({contentType: "application/json", body: JSON.stringify({ready: true})});
           result =
             body.action === "recover"
               ? {

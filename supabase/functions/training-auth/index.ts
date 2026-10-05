@@ -17,8 +17,8 @@ const passwordOK = (s: unknown): s is string =>
   typeof s === "string" && s.length >= 12 && s.length <= 128;
 const callOK = (s: unknown): s is string =>
   typeof s === "string" && /^[A-Za-z0-9_-]{3,24}$/.test(s);
-function checked<T>(r: { data: T; error: unknown }): T {
-  if (r.error) throw Error("Operation failed");
+function checked<T>(r: { data: T; error: any }): T {
+  if (r.error) throw r.error;
   return r.data;
 }
 
@@ -36,16 +36,34 @@ Deno.serve(async (req) => {
   const reply = (body: unknown, status = 200) =>
     new Response(JSON.stringify(body), { status, headers });
   if (origin && !allowed.includes(origin))
-    return reply({ error: "Origin not configured" }, 403);
+    return reply({ error: "Origin not configured. Add this Hub origin to TRAINING_ALLOWED_ORIGINS.", code: "ORIGIN_NOT_CONFIGURED", operation: "CORS origin check" }, 403);
   if (req.method === "OPTIONS") return new Response(null, { headers });
+  if (!url || !key) return reply({error: "Training backend environment is incomplete.", code: "BACKEND_CONFIGURATION", operation: "backend configuration"}, 503);
+  // Readiness probe: no Auth/table calls, attempt counters or secrets.
+  if (req.method === "GET") return reply({ ready: true });
   if (req.method !== "POST") return reply({ error: "POST required" }, 405);
   const admin = createClient(url, key, {
     auth: { persistSession: false, autoRefreshToken: false },
   });
+  // Keep password exchanges from replacing the service client's Authorization.
+  const loginClient = createClient(url, Deno.env.get("SUPABASE_ANON_KEY") || key, {
+    auth: { persistSession: false, autoRefreshToken: false },
+  });
+  let operation = "request validation", identityCreated = false, profileCreated = false;
+  const secrets = [key, req.headers.get("authorization") || ""];
+  const safe = (value: unknown) => {
+    let message = String(value || "Operation failed");
+    for (const secret of secrets) if (secret) message = message.split(secret).join("[REDACTED]");
+    return message.replace(/Bearer\s+\S+|eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+|sb_(?:secret|publishable)_\S+|\b[a-f0-9]{64}\b/gi, "[REDACTED]")
+      .replace(/((?:password|access_token|refresh_token|recovery_code|service_role_key)\s*[=:]\s*)[^\s,;]+/gi, "$1[REDACTED]")
+      .replace(/[\r\n\x00-\x1f]/g, " ").slice(0, 400);
+  };
   try {
     const text = await req.text();
     if (text.length > 4096) return reply({ error: "Request too large" }, 413);
     const b = JSON.parse(text);
+    secrets.push(String(b.password || ""), String(b.code || ""));
+    operation = "RPC training_rate_limit";
     // Edge gateway supplies forwarding headers. Also throttle callsign independently
     // so rotating/falsifying an address cannot remove a target's attempt budget.
     const ip =
@@ -74,7 +92,12 @@ Deno.serve(async (req) => {
           400,
         );
       if (b.action === "signup") {
+        operation = "duplicate callsign check";
+        const existing = checked(await admin.from("training_profiles").select("user_id")
+          .ilike("callsign", b.callsign.replace(/_/g, "\\_" )).maybeSingle());
+        if (existing) return reply({error: "Callsign unavailable. Sign in if you already created this Personnel File.", code: "CALLSIGN_UNAVAILABLE", operation}, 400);
         const email = `${crypto.randomUUID()}@training.invalid`;
+        operation = "Auth identity creation";
         const user = checked(
           await admin.auth.admin.createUser({
             email,
@@ -84,22 +107,28 @@ Deno.serve(async (req) => {
           }),
         ).user;
         if (!user) throw Error("Account creation failed");
+        identityCreated = true;
+        operation = "Training profile creation";
         const { error } = await admin
           .from("training_profiles")
           .insert({ user_id: user.id, callsign: b.callsign });
         if (error) {
-          await admin.auth.admin.deleteUser(user.id);
-          return reply(
-            { error: "Callsign unavailable or account creation failed." },
-            400,
-          );
+          const cleanup = await admin.auth.admin.deleteUser(user.id);
+          identityCreated = !!cleanup.error;
+          if (cleanup.error) throw {code: "PROFILE_CLEANUP_FAILED", message: "Auth identity was created, but profile creation and rollback failed. Ask the Overseer to repair this account before retrying registration."};
+          if (error.code === "23505") return reply({error: "Callsign unavailable.", code: "CALLSIGN_UNAVAILABLE", operation}, 400);
+          throw error;
         }
+        profileCreated = true;
+        operation = "Auth password exchange after account creation";
         const session = checked(
-          await admin.auth.signInWithPassword({ email, password: b.password }),
+          await loginClient.auth.signInWithPassword({ email, password: b.password }),
         ).session;
+        if (!session) throw Error("Auth returned no session");
         return reply({ session });
       }
       if (b.action === "recover") {
+        operation = "RPC training_claim_reset";
         if (
           typeof b.code !== "string" ||
           !/^[a-f0-9]{64}$/i.test(b.code.replace(/\s/g, ""))
@@ -113,6 +142,7 @@ Deno.serve(async (req) => {
         );
         // Claim is atomic: concurrent requests cannot reuse the same code. Fail closed
         // if Auth is unavailable; the Overseer can issue a fresh code after failure.
+        operation = "Auth password recovery";
         const changed = await admin.auth.admin.updateUserById(uid, {
           password: b.password,
         });
@@ -139,6 +169,7 @@ Deno.serve(async (req) => {
           message: "PASSWORD RESET COMPLETED. Sign in with your new password.",
         });
       }
+      operation = "Training profile lookup for sign-in";
       const profile = checked(
         await admin
           .from("training_profiles")
@@ -146,22 +177,29 @@ Deno.serve(async (req) => {
           .ilike("callsign", b.callsign.replace(/_/g, "\\_"))
           .maybeSingle(),
       );
-      if (!profile || profile.disabled) throw Error("Invalid credentials");
+      if (!profile) return reply({error: "Invalid callsign or password.", code: "INVALID_CREDENTIALS", operation: "sign-in"}, 400);
+      operation = "Auth identity lookup";
       const user = checked(
         await admin.auth.admin.getUserById(profile.user_id),
       ).user;
-      const session = checked(
-        await admin.auth.signInWithPassword({
+      operation = "Auth password exchange";
+      const signedIn = await loginClient.auth.signInWithPassword({
           email: user.email!,
           password: b.password,
-        }),
-      ).session;
+        });
+      if (signedIn.error && (signedIn.error.code === "invalid_credentials" || signedIn.error.message === "Bad credentials"))
+        return reply({error: "Invalid callsign or password.", code: "INVALID_CREDENTIALS", operation}, 400);
+      const session = checked(signedIn).session;
+      if (profile.disabled) return reply({error: "Personnel File disabled. Contact an Overseer.", code: "ACCOUNT_DISABLED", operation: "account-disabled check"}, 400);
+      if (!session) throw Error("Auth returned no session");
       return reply({ session });
     }
     const jwt = (req.headers.get("authorization") || "").replace(
       /^Bearer /i,
       "",
     );
+    secrets.push(jwt);
+    operation = "Overseer authorization";
     const actor = checked(await admin.auth.getUser(jwt)).user;
     if (!actor) return reply({ error: "Overseer access denied" }, 403);
     const overseer = checked(
@@ -180,6 +218,7 @@ Deno.serve(async (req) => {
         .single(),
     );
     if (b.action === "issue-reset") {
+      operation = "RPC training_issue_reset";
       const code = [...crypto.getRandomValues(new Uint8Array(32))]
         .map((b) => b.toString(16).padStart(2, "0"))
         .join("");
@@ -197,6 +236,7 @@ Deno.serve(async (req) => {
       });
     }
     if (b.action === "delete") {
+      operation = "Overseer account deletion";
       if (b.confirmation !== `DELETE ${p.callsign}`)
         return reply({ error: "Exact confirmation required" }, 400);
       // Refuse deletion of an Auth identity that also has an existing Overseer role.
@@ -217,13 +257,19 @@ Deno.serve(async (req) => {
       return reply({ message: "Personnel File deleted" });
     }
     return reply({ error: "Unknown action" }, 400);
-  } catch {
+  } catch (e: any) {
+    const sanitizedCode = safe(e?.code || "TRAINING_AUTH_FAILED");
+    const code = /^[A-Za-z0-9_-]{1,64}$/.test(sanitizedCode) ? sanitizedCode : "TRAINING_AUTH_FAILED";
+    const error = safe(e?.message) + (identityCreated ? (profileCreated
+      ? " Personnel File was created. Sign in with the same callsign/password; do not create another account."
+      : " Auth identity exists but its Training profile is not linked; Overseer repair is required.") : "");
+    console.warn(JSON.stringify({operation, code, error, identity_created: identityCreated, profile_created: profileCreated}));
     return reply(
       {
-        error:
-          "Unable to complete request. Check credentials, recovery code, permissions and server setup.",
+        error, code, operation, upstream_status: Number(e?.status) || null,
+        identity_created: identityCreated, profile_created: profileCreated,
       },
-      400,
+      e?.status >= 500 ? 503 : 400,
     );
   }
 });
