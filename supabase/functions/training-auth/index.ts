@@ -2,9 +2,19 @@ import { createClient } from "npm:@supabase/supabase-js@2.57.4";
 
 const url = Deno.env.get("SUPABASE_URL")!;
 const key = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-const allowed = (Deno.env.get("TRAINING_ALLOWED_ORIGINS") || "")
-  .split(",")
-  .map((s) => s.trim());
+// The Hub is a public static application that can move between domains. CORS
+// permits transport; passwords, verified bearer JWTs and RPC/RLS authorize data.
+// No cookies or Access-Control-Allow-Credentials are used. Operators can opt
+// into an exact-origin policy without hard-coding any hosting domain in code.
+const corsMode = Deno.env.get("TRAINING_CORS_MODE") || "public";
+const allowed = (Deno.env.get("TRAINING_ALLOWED_ORIGINS") || "").split(",")
+  .map((s) => {
+    try {
+      const u = new URL(s.trim());
+      return ["https:", "http:"].includes(u.protocol) && !u.username && !u.password && u.pathname === "/" && !u.search && !u.hash ? u.origin : "";
+    } catch { return ""; }
+  }).filter(Boolean);
+const corsHeaders = ["authorization", "apikey", "content-type", "x-client-info"];
 const digest = async (s: string) =>
   [
     ...new Uint8Array(
@@ -24,23 +34,27 @@ function checked<T>(r: { data: T; error: any }): T {
 
 Deno.serve(async (req) => {
   const origin = req.headers.get("origin") || "";
+  const configured = ["public", "restricted"].includes(corsMode) && (corsMode !== "restricted" || allowed.length > 0);
+  const originAllowed = configured && (corsMode === "public" || !origin || allowed.includes(origin));
   const headers = {
-    "Access-Control-Allow-Origin": allowed.includes(origin) ? origin : "",
-    "Access-Control-Allow-Headers":
-      "authorization,apikey,content-type,x-client-info",
-    "Access-Control-Allow-Methods": "POST, OPTIONS",
+    // Readiness contains no private data. Keep even configuration failures
+    // readable so a restricted-origin deployment can explain its rejection.
+    "Access-Control-Allow-Origin": corsMode === "public" || req.method === "GET" ? "*" : originAllowed ? origin : "",
+    "Access-Control-Allow-Headers": corsHeaders.join(","),
+    "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
     "Content-Type": "application/json",
     "Cache-Control": "no-store",
     Vary: "Origin",
   };
   const reply = (body: unknown, status = 200) =>
     new Response(JSON.stringify(body), { status, headers });
-  if (origin && !allowed.includes(origin))
-    return reply({ error: "Origin not configured. Add this Hub origin to TRAINING_ALLOWED_ORIGINS.", code: "ORIGIN_NOT_CONFIGURED", operation: "CORS origin check" }, 403);
-  if (req.method === "OPTIONS") return new Response(null, { headers });
+  if (!configured) return reply({error: "Invalid TRAINING_CORS_MODE or empty restricted-origin list.", code: "BACKEND_CONFIGURATION", operation: "CORS configuration"}, 503);
+  if (!originAllowed)
+    return reply({ error: "This origin is not allowed in restricted CORS mode. Update TRAINING_ALLOWED_ORIGINS or use public CORS mode for the public Hub.", code: "ORIGIN_NOT_CONFIGURED", operation: "CORS origin check" }, 403);
+  if (req.method === "OPTIONS") return new Response(null, { status: 204, headers });
   if (!url || !key) return reply({error: "Training backend environment is incomplete.", code: "BACKEND_CONFIGURATION", operation: "backend configuration"}, 503);
   // Readiness probe: no Auth/table calls, attempt counters or secrets.
-  if (req.method === "GET") return reply({ ready: true });
+  if (req.method === "GET") return reply({ ready: true, cors: {mode: corsMode, origin_allowed: originAllowed, methods: ["GET", "POST", "OPTIONS"], headers: corsHeaders} });
   if (req.method !== "POST") return reply({ error: "POST required" }, 405);
   const admin = createClient(url, key, {
     auth: { persistSession: false, autoRefreshToken: false },
