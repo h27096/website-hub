@@ -21,22 +21,29 @@
   function failure(operation, error = {}, http) {
     const sanitizedCode = safe(error.code || "UNKNOWN");
     const code = /^[A-Za-z0-9_-]{1,64}$/.test(sanitizedCode) ? sanitizedCode : "UNKNOWN";
+    const httpStatus = Number(http || error.status);
+    let category = "";
+    if (operation.includes("training-auth") && (code === "NOT_FOUND" || code === "FUNCTION_NOT_DEPLOYED")) category = "FUNCTION NOT DEPLOYED";
+    else if (["ORIGIN_NOT_CONFIGURED", "CORS_PREFLIGHT_FAILED"].includes(code)) category = "CORS PREFLIGHT FAILED";
+    else if (code === "CORS_RESPONSE_BLOCKED") category = "CORS RESPONSE BLOCKED (preflight/deployment status unconfirmed)";
+    else if (code === "FUNCTION_UNREACHABLE") category = "FUNCTION UNREACHABLE";
+    else if ([401,403].includes(httpStatus) || ["42501", "INVALID_CREDENTIALS", "ACCOUNT_DISABLED"].includes(code)) category = "AUTHORIZATION FAILED";
     let hint = "";
     if (code === "NOT_FOUND" && operation.includes("training-auth")) hint = " Deploy the training-auth Edge Function to the existing project; SQL alone does not deploy it.";
     else if (["PGRST202", "42883", "42P01"].includes(code)) hint = " Required RPC/table/signature is missing; check the deployed schema and schema cache.";
     else if (code === "42501") hint = " Access denied: check account status and RPC grants/RLS.";
     const upstream = Number.isInteger(error.upstream_status) ? ` // upstream HTTP ${error.upstream_status}` : "";
-    const httpStatus = Number(http || error.status);
-    const message = `${safe(operation)} failed // HTTP ${httpStatus >= 100 && httpStatus <= 599 ? httpStatus : "unavailable"}${upstream} // ${code}: ${safe(error.error || error.message)}${hint}`;
+    const message = `${category ? category + " // " : ""}${safe(operation)} failed // HTTP ${httpStatus >= 100 && httpStatus <= 599 ? httpStatus : "unavailable"}${upstream} // ${code}: ${safe(error.error || error.message)}${hint}`;
     // Only a sanitized string, never request bodies, headers, sessions or Error objects.
     console.warn("[Training] " + message);
     return Error(message);
   }
-  async function request(operation, path, options) {
+  async function request(operation, path, options, transportFailure) {
     let response;
-    try { response = await fetch(SUPABASE_URL + path, options); }
+    try { response = await fetch(SUPABASE_URL + path, {...options, credentials: "omit"}); }
     catch {
-      throw failure(operation, {code: "NETWORK_OR_CORS", message: "No readable Supabase response. The request may have failed before reaching Supabase, or the browser blocked it (network/CORS). Check function deployment and allowed origin."});
+      if (transportFailure) return transportFailure();
+      throw failure(operation, {code: "REQUEST_UNREADABLE", message: "No readable response. Check browser Network details; JavaScript cannot distinguish blocked response headers from a transport failure."});
     }
     let data;
     try { data = await response.json(); }
@@ -149,11 +156,7 @@
     const jwt = admin ? window.overseerSession?.access_token : await token();
     if (admin && !jwt) throw Error("Sign in to Overseer Mode first.");
     if (jwt) secrets.add(jwt);
-    // GET sends no credentials/body and does not consume attempt budgets. Unlike
-    // POST's preflight, a missing function's gateway response is readable here.
-    await request("training-auth availability", "/functions/v1/training-auth", {
-      method: "GET", headers: {apikey: SUPABASE_KEY},
-    });
+    await edgeReadiness();
     return request("training-auth " + args.action, "/functions/v1/training-auth", {
       method: "POST",
       headers: {
@@ -162,6 +165,28 @@
         ...(jwt ? { Authorization: "Bearer " + jwt } : {}),
       },
       body: JSON.stringify(args),
+    }, async () => {
+      // Readiness was readable, but the JSON/bearer POST was not. Recheck before
+      // attributing it to preflight; the server/network may have gone away.
+      const uncertain = args.action === "signup" ? " Account creation status is unknown; sign in with the same callsign/password before registering again." : "";
+      try { await edgeReadiness(); }
+      catch (error) { throw Error(error.message + uncertain); }
+      throw failure("training-auth " + args.action, {code: "CORS_PREFLIGHT_FAILED", message: "Suspected preflight or POST-response CORS failure: the simple readiness GET works, but POST has no readable response. Check the browser Network OPTIONS/POST entries or run tools/check-training-endpoint.cjs. The browser does not expose which request failed." + uncertain});
+    });
+  }
+  async function edgeReadiness() {
+    const path = "/functions/v1/training-auth";
+    // No apikey, Authorization, Content-Type or other custom headers: GET must
+    // remain CORS-safelisted so a missing function's 404 is actually readable.
+    return request("training-auth availability", path, {method: "GET", cache: "no-store"}, async () => {
+      try {
+        // This body-free, cookie-free probe can confirm HTTP reachability only.
+        // An opaque response never proves deployment, HTTP success or Auth.
+        await fetch(SUPABASE_URL + path, {method: "GET", mode: "no-cors", credentials: "omit", cache: "no-store"});
+      } catch {
+        throw failure("training-auth availability", {code: "FUNCTION_UNREACHABLE", message: "Neither the readable nor opaque readiness GET reached a usable HTTP response. Check DNS, TLS, connectivity, extensions and network policy. Deployment status is unconfirmed."});
+      }
+      throw failure("training-auth availability", {code: "CORS_RESPONSE_BLOCKED", message: "HTTP endpoint reachable, but the browser cannot read the simple GET. Check Access-Control-Allow-Origin with tools/check-training-endpoint.cjs. An opaque response cannot confirm whether the function is deployed."});
     });
   }
   function shell() {

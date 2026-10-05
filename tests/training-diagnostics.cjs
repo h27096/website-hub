@@ -26,7 +26,7 @@ const root = path.resolve(__dirname, '..');
       if (name === 'use_access_code') return reply({success:b.input_code === 'hub-password'});
       if (name === 'training-auth') {
         if (req.method() === 'GET') {
-          assert(!req.postData()); assert(!req.headers().authorization);
+          assert(!req.postData()); assert(!req.headers().authorization); assert(!req.headers().apikey); assert(!req.headers()['content-type']);
           if (edgeMode === 'missing') return reply({code:'NOT_FOUND',message:'Requested function was not found'},404);
           if (edgeMode === 'network') return r.abort('failed');
           return reply({ready:true});
@@ -70,7 +70,7 @@ const root = path.resolve(__dirname, '..');
     await fill(); await create();
     await assertText(/availability failed.*HTTP 404.*NOT_FOUND.*Deploy the training-auth/);
     assert.equal(postCount,0);
-    edgeMode='network'; await login(); await assertText(/NETWORK_OR_CORS.*No readable Supabase response/);
+    edgeMode='network'; await login(); await assertText(/FUNCTION UNREACHABLE.*FUNCTION_UNREACHABLE/);
     for (const [mode,code] of [['wrong','INVALID_CREDENTIALS'],['duplicate','CALLSIGN_UNAVAILABLE'],['disabled','ACCOUNT_DISABLED'],['partial','unexpected_failure']]) {
       edgeMode=mode; await create(); await assertText(new RegExp(code));
     }

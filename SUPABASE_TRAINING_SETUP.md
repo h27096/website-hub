@@ -6,44 +6,131 @@ database operations are performed by the test suites.
 
 ## v1.3 stabilization: migration already applied
 
-The production diagnostic on October 5, 2026 found the configured project reachable:
-Auth settings and `training_catalog(p_admin=false)` returned HTTP 200, while both
-GET and OPTIONS `/functions/v1/training-auth` returned HTTP 404 with
-`NOT_FOUND: Requested function was not found`. The failed POST preflight is why
-Safari reports `Load failed` before Auth or profile creation. SQL migration and
-Edge Function deployment are separate operations. **No corrective SQL is needed
-for this failure. Do not rerun the already-applied migration.**
+**The Edge Function is not deployed at the configured endpoint (verified again
+October 5, 2026). You still need to deploy it.** The repo contains
+`supabase/functions/training-auth/index.ts` (a Deno/Supabase Edge Function) and
+`supabase/config.toml` with `verify_jwt = false`. The frontend derives the endpoint
+from its existing `SUPABASE_URL`:
 
-From an updated checkout of this repository, deploy the fixed function:
+`https://jkvjwrylzbhtrjesgrxi.supabase.co/functions/v1/training-auth`
+
+GET with no API key, GET with the frontend publishable key, OPTIONS (for GET and
+POST), and POST all returned HTTP 404 / `NOT_FOUND: Requested function was not
+found`. Auth settings and `training_catalog` were reachable. This is the existing
+Website Hub project, not a new or mismatched project. Neither the SQL migration,
+GitHub Pages deployment nor a GitHub commit deploys Edge Functions.
+
+The previous readiness GET still sent `apikey`; that custom header caused a
+browser preflight. The missing function's OPTIONS returned 404, hiding the useful
+JSON behind `NETWORK_OR_CORS`. Readiness now uses a simple GET **without custom
+headers, cookies or a body**, so that gateway 404 can be read directly.
+**No corrective SQL is needed. Do not rerun the applied migration or reset data.**
+
+### Exact manual steps (Windows, macOS or Linux)
+
+1. Install Node.js 20 or newer if needed. Open a terminal in an updated checkout
+   of this repository containing the fixed function and frontend. If using the
+   review branch, fetch and switch to it before deploying. `supabase/config.toml`
+   already exists; do not overwrite it with `supabase init`.
+2. Run these commands from the repository root (`npx` obtains the Supabase CLI):
+
+   ```sh
+   npx supabase login
+   npx supabase secrets set --project-ref jkvjwrylzbhtrjesgrxi TRAINING_CORS_MODE=public
+   npx supabase functions deploy training-auth --project-ref jkvjwrylzbhtrjesgrxi --no-verify-jwt --use-api
+   npx supabase functions list --project-ref jkvjwrylzbhtrjesgrxi
+   ```
+
+   Sign in to the Supabase account that can deploy to this project. `--use-api`
+   bundles on Supabase, so this deployment does not need local Docker. `login`
+   may request your personal Supabase access token; enter it only in the CLI,
+   never the site or a commit. The explicit project ref avoids a separate link
+   or database-password step. Do not run `db push` or `db reset` for this fix.
+3. Supabase supplies `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` and
+   `SUPABASE_ANON_KEY` to the hosted function. No browser/service-role secret
+   copying is required. The only custom configuration needed for this public
+   Hub is **`TRAINING_CORS_MODE=public`**. Any older
+   `TRAINING_ALLOWED_ORIGINS` list is ignored in public mode; it need not be
+   deleted. `--no-verify-jwt` permits public signup/login/readiness with the
+   frontend's publishable key in `apikey` (not as a fake Bearer JWT).
+   Privileged POST actions still verify the real Overseer bearer JWT and role.
+4. Check deployment from the same directory:
+
+   ```sh
+   node tools/check-training-endpoint.cjs
+   ```
+
+   This script uses the current project URL from `index.html` and current origin
+   from `CNAME`. To check another actual domain, use
+   `node tools/check-training-endpoint.cjs --origin https://your-current-hub-domain`.
+   It sends only GET and OPTIONS, never creates an account or consumes the
+   function's attempt counters. Expected result: **READY**, GET 200 with
+   `ready: true`, OPTIONS 204 with matching CORS headers. The gateway's old 404
+   means the function is still missing at that URL; a CLI success message alone
+   is not the acceptance check.
+5. Publish the changed static files with the existing GitHub Pages workflow and
+   refresh the Hub. Create a disposable Personnel File, confirm XP/rank fields,
+   sign out/in, refresh, and verify wrong-password/duplicate/disabled behavior.
+   Production create/sign-in acceptance is blocked until the function is
+   deployed. Local tests do not imply a live deployment.
+
+### CORS and changing Hub domains
+
+The public static Hub can move to any domain. Public mode uses
+`Access-Control-Allow-Origin: *` with methods `GET, POST, OPTIONS` and headers
+`authorization, apikey, content-type, x-client-info`. All responses include CORS
+headers; OPTIONS returns 204 before Auth/table/rate-limit work. Fetch explicitly
+uses `credentials: omit`, and the server never enables
+`Access-Control-Allow-Credentials`. Origin values are not blindly reflected.
+Moving the Hub does not require code edits, function redeployment or an updated
+origin secret in **public** mode. A new domain has independent browser session
+storage; users sign in again using their existing Personnel File.
+
+CORS is transport permission, not account authorization. Password checks and
+rate limits remain server-side; admin actions use `Auth.getUser` and the existing
+Overseer table; private Training RPCs enforce identity, account status and RLS.
+A foreign site does not receive the Hub origin's locally stored bearer token,
+and no cookie is automatically sent to authorize an action. Public signup/login
+were already callable from non-browser clients; origin lists are not bot
+protection. No service-role key, recovery secret or private account projection
+is exposed by readiness or by public CORS.
+
+For operators who deliberately need a fixed browser-origin policy, opt in:
 
 ```sh
-supabase login
-supabase secrets set --project-ref jkvjwrylzbhtrjesgrxi TRAINING_ALLOWED_ORIGINS=https://tempoary.robco.pizzamonster.org,https://h27096.github.io
-supabase functions deploy training-auth --project-ref jkvjwrylzbhtrjesgrxi --no-verify-jwt
+npx supabase secrets set --project-ref jkvjwrylzbhtrjesgrxi TRAINING_CORS_MODE=restricted TRAINING_ALLOWED_ORIGINS=https://first.example,https://second.example
 ```
 
-Add any other actual Hub origin to the comma-separated list before running the
-secrets command (it replaces the list). Origins have no trailing slash or path.
-Publish the updated static files through the existing GitHub Pages workflow.
-GET `training-auth` now reports readiness without creating accounts or consuming
-rate limits. A public GET sends only the publishable API key; administrative POST
-operations still verify the Overseer JWT and membership inside the function.
+This is optional, not the recommended deployment model for the changing public
+Hub. Restricted origins are normalized exact HTTP(S) origins, not wildcard
+substrings. Paths, query strings, credentials, wildcard hosts and empty lists
+are rejected. Changing domains in restricted mode requires updating this list.
+Only the public readiness/configuration response remains readable from a denied
+origin; denied POSTs are rejected before Auth or database work. Missing/invalid
+restricted configuration fails closed with `BACKEND_CONFIGURATION`.
 
-Diagnostics distinguish function availability, Auth exchange, profile lookup,
-profile creation, session installation, and the authenticated `training_profile`
-RPC. HTTP status, upstream Auth status where provided, and sanitized error codes
-are shown. A network/CORS failure has no readable HTTP status and is reported as
-such, rather than asserting the request definitely never reached Supabase.
-No request bodies, headers, sessions, passwords or recovery secrets are logged.
+### Diagnostics and their limits
+
+| Report | Evidence |
+| --- | --- |
+| FUNCTION NOT DEPLOYED | Readable 404 with gateway code `NOT_FOUND` |
+| CORS PREFLIGHT FAILED | Standalone probe proves OPTIONS/header mismatch, or readiness reports a denied origin; UI labels unreadable POST with working GET as **suspected** preflight/POST-response CORS |
+| FUNCTION UNREACHABLE | Both readable/opaque GET attempts fail; deployment status unconfirmed |
+| AUTHORIZATION FAILED | Readable HTTP 401/403 or an explicit credentials/account access error |
+| CORS RESPONSE BLOCKED | An opaque GET reaches an HTTP endpoint but the readable GET fails; HTTP status/function existence remain unconfirmed |
+
+Browser fetch intentionally hides blocked HTTP responses. JavaScript cannot
+always distinguish DNS/TLS/network policy from blocked CORS responses, or OPTIONS
+failure from a missing POST response header. The UI does not invent an HTTP
+status or claim an opaque response proves deployment. Use the read-only script
+or DevTools Network OPTIONS/POST entries for definitive server-side evidence.
+No credential-bearing POST is retried automatically after a transport error.
+No request bodies, tokens, passwords or recovery codes are logged.
+
 If creation succeeds but session/profile loading fails, sign in with the same
 credentials or use RETRY PROFILE; do not register again. Failed profile inserts
 attempt Auth rollback and explicitly report rollback failure requiring repair.
-
-RLS remains enabled. Direct Training table access remains revoked for browser
-roles; own-account data is returned only by authenticated, checked RPCs.
-The deployed SQL function signatures match the frontend and Edge handler. Local
-regression tests must stay isolated; production account acceptance checks happen
-only after this function is deployed.
+Direct Training table grants/RLS remain unchanged. v1.4 is not part of this fix.
 
 ## Initial deployment steps (new installations only)
 
@@ -61,15 +148,13 @@ only after this function is deployed.
    `supabase login`. From this repository directory, run:
 
    ```sh
-   supabase secrets set --project-ref jkvjwrylzbhtrjesgrxi TRAINING_ALLOWED_ORIGINS=https://tempoary.robco.pizzamonster.org,https://h27096.github.io
-   supabase functions deploy training-auth --project-ref jkvjwrylzbhtrjesgrxi --no-verify-jwt
+   npx supabase secrets set --project-ref jkvjwrylzbhtrjesgrxi TRAINING_CORS_MODE=public
+   npx supabase functions deploy training-auth --project-ref jkvjwrylzbhtrjesgrxi --no-verify-jwt --use-api
    ```
 
-   The first origin is spelled exactly as the repository's current CNAME.
-   Replace/add origins if your actual hosting addresses differ. Include only
-   scheme and host (and local port where needed), no trailing slash or URL path.
-   For a future domain, add its origin before publishing there. CORS is not the
-   authorization boundary: admin operations verify Auth and Overseer membership.
+   Public CORS mode supports changing hosting origins with cookie-free requests.
+   See the configuration and security explanation above. No hard-coded hosting
+   domain needs to be maintained in function code.
 
    Supabase supplies `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` to the hosted
    Edge Function. **Never copy the service-role key into the website or GitHub.**
@@ -272,3 +357,10 @@ v1.4 implementation is present.
 
 Auth API references: [server-side password update](https://supabase.com/docs/reference/javascript/auth-admin-updateuserbyid),
 [verified user lookup](https://supabase.com/docs/reference/javascript/auth-getuser).
+
+## Reference documentation
+
+- [Supabase CLI deployment flags](https://supabase.com/docs/reference/cli/supabase-functions-deploy)
+- [CORS handling](https://supabase.com/docs/guides/functions/cors)
+- [Publishable keys and Authorization headers](https://supabase.com/docs/guides/functions/auth-headers)
+- [CLI and Node requirements](https://supabase.com/docs/guides/local-development/cli/getting-started)

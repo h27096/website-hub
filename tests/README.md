@@ -19,6 +19,7 @@ node tests/training-db.cjs
 node tests/training-auth.cjs
 node tests/training-browser.cjs
 node tests/training-diagnostics.cjs
+node tests/training-cors.cjs
 ```
 
 All service calls are fixtures or local PostgreSQL, with no writes to production.
@@ -39,3 +40,10 @@ network/CORS diagnostics, sanitized secrets, partial account creation, profile
 retry, sign-out/sign-in, refresh persistence and XP/rank rendering. Edge tests
 exercise the real handler and migration with Auth transport fixtures, including
 profile rollback failures and successful creation followed by an Auth outage.
+
+The native CORS suite serves the real Edge handler over local HTTP and lets
+Chromium enforce preflight/response CORS. It uses the real migration/PostgreSQL
+and an isolated Auth transport, testing creation/sign-in across two Hub origins,
+readiness without custom headers/cookies, OPTIONS denial, missing deployment,
+opaque/unreachable/authorization failures, restricted origins and admin denial.
+No browser CORS/security-disabling flags or live accounts are used.
