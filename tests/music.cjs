@@ -23,7 +23,7 @@ const server = http.createServer((req,res) => {
   res.setHeader('Content-Type',file.endsWith('.js')?'text/javascript':file.endsWith('.css')?'text/css':'text/html');res.end(fs.readFileSync(file));
 });
 async function setup(page) {
-  await page.route('https://cdn.jsdelivr.net/**',route => route.fulfill({contentType:'text/javascript',body:'window.supabase={createClient:()=>({})};'}));
+  await page.route('https://cdn.jsdelivr.net/**',route => route.fulfill({contentType:'text/javascript',body:'window.supabase={createClient:()=>({auth:{getSession:async()=>({data:{session:null}})}})};'}));
   await page.route('https://*.supabase.co/**',async route => {
     const request=route.request(), url=new URL(request.url()), method=request.method();
     const reply=(data,status=200)=>route.fulfill({status,contentType:'application/json',body:JSON.stringify(data)});
@@ -88,7 +88,7 @@ async function loginManager(page,url) {
   await page.locator('#overseerEmail').fill('test@example.com');
   await page.locator('#overseerPassword').fill('test');
   await page.evaluate(()=>overseerLogin());
-  await page.getByRole('button',{name:'MANAGE RADIO MUSIC'}).click();
+  await page.getByRole('button',{name:'MEDIA',exact:true}).click();await page.getByRole('button',{name:'MANAGE RADIO MUSIC'}).click();
   await page.waitForSelector('#musicUploadForm');
 }
 async function fillUpload(page,title='Test Broadcast',useMp3=false) {

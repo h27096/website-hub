@@ -11,7 +11,7 @@ const server=http.createServer((req,res)=>{const file=path.resolve(root,'.'+(req
   try {
     const page=await browser.newPage();page.on('pageerror',e=>errors.push(e.message));
     page.on('dialog',d=>d.type()==='prompt'?d.accept(d.defaultValue()+' edited'):d.accept());
-    await page.route('https://cdn.jsdelivr.net/**',r=>r.fulfill({contentType:'text/javascript',body:'window.supabase={createClient:()=>({})};'}));
+    await page.route('https://cdn.jsdelivr.net/**',r=>r.fulfill({contentType:'text/javascript',body:'window.supabase={createClient:()=>({auth:{getSession:async()=>({data:{session:null}})}})};'}));
     await page.route('https://*.supabase.co/**',r=>{
       const req=r.request(),name=new URL(req.url()).pathname.split('/').pop(),body=JSON.parse(req.postData()||'{}');
       const reply=data=>r.fulfill({contentType:'application/json',body:JSON.stringify(data)});
@@ -51,7 +51,7 @@ const server=http.createServer((req,res)=>{const file=path.resolve(root,'.'+(req
     await page.evaluate(()=>toggleManagedWebsite('site',true));assert.equal(sites[0].enabled,false);
     await page.evaluate(()=>toggleManagedWebsite('site',false));assert.equal(sites[0].enabled,true);
     await page.evaluate(()=>showWebsiteRequests());await page.getByRole('button',{name:'APPROVE & PUBLISH',exact:true}).click();await page.getByText('NO PENDING REQUESTS.',{exact:true}).waitFor();
-    await page.evaluate(()=>toggleCreateAnnouncement());await page.locator('#announcementTitle').fill('Bulletin');await page.locator('#announcementMessage').fill('Message');await page.evaluate(()=>createAnnouncement());
+    await page.getByRole('button',{name:'WEBSITE ADMINISTRATION',exact:true}).click();await page.evaluate(()=>toggleCreateAnnouncement());await page.locator('#announcementTitle').fill('Bulletin');await page.locator('#announcementMessage').fill('Message');await page.evaluate(()=>createAnnouncement());
     assert.equal(announcements.length,1);await page.evaluate(()=>loadAnnouncements());await page.evaluate(()=>editAnnouncement('announcement'));assert.equal(announcements[0].title,'Bulletin edited');
     await page.evaluate(()=>generateGuestCode());assert.match(await page.locator('#overseerOutput').textContent(),/TEST-CODE/);
     await page.evaluate(()=>viewAccessCodes());await page.evaluate(()=>deactivateCode('code'));assert.equal(codes[0].active,false);

@@ -9,7 +9,7 @@ All offer restart/reset and work with keyboard, mouse or touch.
 See [release history](version-history-data.js), [development instructions](AGENTS.md)
 and [tests](tests/README.md). Employee Document and Radio setup instructions
 remain available in their existing files. v1.3 — RobCo Training Center is
-implemented; see deployment and stabilization instructions below. v1.4 remains planned.
+implemented; see deployment and stabilization instructions below. v1.4 — RobCo Employee & Administration Overhaul is implemented in source; see [personnel deployment](SUPABASE_PERSONNEL_SETUP.md) before production activation. v1.5 multiplayer remains planned.
 
 For installations that applied the abandoned experimental browsing migrations,
 `supabase/migrations/20261004_remove_canceled_proxy.sql` removes only their dedicated

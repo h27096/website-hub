@@ -15,7 +15,7 @@ const server=http.createServer((req,res)=>{
   try {
     async function setup(mobile=false) {
       const context=await browser.newContext({viewport:mobile?{width:390,height:844}:{width:1280,height:900},hasTouch:mobile});contexts.push(context);
-      await context.route('https://cdn.jsdelivr.net/**',r=>r.fulfill({contentType:'text/javascript',body:'window.supabase={createClient:()=>({})};'}));
+      await context.route('https://cdn.jsdelivr.net/**',r=>r.fulfill({contentType:'text/javascript',body:'window.supabase={createClient:()=>({auth:{getSession:async()=>({data:{session:null}})}})};'}));
       await context.route('https://*.supabase.co/**',r=>{
         const request=r.request(), name=new URL(request.url()).pathname.split('/').pop();
         assert(!/privacy|proxy/i.test(request.url()), 'Canceled feature must make no service requests');

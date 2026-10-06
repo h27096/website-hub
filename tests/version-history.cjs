@@ -9,9 +9,9 @@ const vm = require('node:vm');
 const root = path.resolve(__dirname, '..');
 const data = vm.runInNewContext(fs.readFileSync(path.join(root, 'version-history-data.js'), 'utf8') + '\nJSON.stringify(ROBCO_VERSION_HISTORY)');
 const history = JSON.parse(data);
-assert.equal(history.releases[0].version, 'v1.3');
-assert.deepEqual(history.releases.map(r => r.version), ['v1.3','v1.2','v1.1','v1.0','v0.5','v0.4','v0.3','v0.2','v0.1']);
-assert.deepEqual(history.roadmap.map(r=>r.version), ['v1.4']);
+assert.equal(history.releases[0].version, 'v1.4');
+assert.deepEqual(history.releases.map(r => r.version), ['v1.4','v1.3','v1.2','v1.1','v1.0','v0.5','v0.4','v0.3','v0.2','v0.1']);
+assert.deepEqual(history.roadmap.map(r=>r.version), ['v1.5']);
 assert.match(history.roadmap[0].title, /RobCo Live Training/);
 const versions = new Set();
 for (const release of history.releases) {
@@ -36,12 +36,14 @@ const server = http.createServer((req,res) => {
     const page = await browser.newPage();
     const errors = []; let requests = 0;
     page.on('pageerror',error => errors.push(error.message));
-    await page.route('https://cdn.jsdelivr.net/**',r => r.fulfill({contentType:'text/javascript',body:'window.supabase={createClient:()=>({})};'}));
+    await page.route('https://cdn.jsdelivr.net/**',r => r.fulfill({contentType:'text/javascript',body:'window.supabase={createClient:()=>({auth:{getSession:async()=>({data:{session:window.testEmployeeSession||null}}),setSession:async s=>{window.testEmployeeSession=s;return{};}}})};'}));
     await page.route('https://*.supabase.co/**',r => {
       requests++;
       const url = r.request().url(); let data = [];
       if (url.includes('use_access_code')) data = {success:true};
-      if (url.includes('employee_login')) data = true;
+      if(url.includes('personnel_selection')) data=[{id:'test-person',callsign:'Test Person',title:'Employee'}];
+      if(url.includes('personnel-auth')) data={session:{access_token:'employee-jwt',refresh_token:'refresh'}};
+      if(url.includes('personnel_action'))data={id:'test-person',callsign:'Test Person',title:'Employee',permissions:['website.submit'],website_requests:[]};
       if (url.includes('/auth/v1/token')) data = {user:{id:'test'},access_token:'test-token'};
       if (url.includes('/overseers?')) data = [{user_id:'test'}];
       return r.fulfill({contentType:'application/json',body:JSON.stringify(data)});
@@ -52,14 +54,14 @@ const server = http.createServer((req,res) => {
       await button.click();
       const dialog = page.getByRole('dialog', {name:'VERSION / UPDATE LOG'});
       assert(await dialog.isVisible());
-      assert.equal(await dialog.locator('.version-history-current').textContent(), 'ROBCO WEBSITE HUB // VERSION v1.3');
+      assert.equal(await dialog.locator('.version-history-current').textContent(), 'ROBCO WEBSITE HUB // VERSION v1.4');
       const sections = dialog.locator('section');
       assert.equal(await sections.nth(0).locator('article').count(), history.releases.length);
       for (const release of history.releases) {
         const entry = sections.nth(0).locator('article').filter({has:page.getByRole('heading',{name:new RegExp('^'+release.version.replace('.', '\\.')+' //')})});
         assert.deepEqual(await entry.locator('li').allTextContents(), release.changes);
       }
-      assert(!/v1\.4/.test(await sections.nth(0).textContent()));
+      assert(!/v1\.5/.test((await sections.nth(0).getByRole('heading').allTextContents()).join(' ')));
       assert.match(await sections.nth(1).textContent(), /RobCo Live Training/);
       assert.equal(await sections.nth(1).locator('article').count(), 1);
       const text = await dialog.textContent();
@@ -85,14 +87,13 @@ const server = http.createServer((req,res) => {
     await page.locator('#accessCode').fill('test-only'); await page.evaluate(() => login());
     await checkHistory(page.locator('#dashboard').getByRole('button',{name:'UPDATE LOG / VERSION HISTORY'}), 'user');
     await page.goto(url); await page.evaluate(() => showEmployeeLogin());
-    await page.locator('#employeePassword').fill('test-only'); await page.evaluate(() => employeeLogin());
-    await page.locator('#employeeWebsiteName').fill('Preserve my request');
+    await page.getByRole('button',{name:'Test Person — Employee'}).click();await page.getByLabel('PERSONAL PASSWORD').fill('employee-password-123');await page.getByRole('button',{name:'SIGN IN',exact:true}).click();await page.getByRole('button',{name:'WEBSITE REQUESTS',exact:true}).click();await page.getByLabel('WEBSITE NAME').fill('Preserve my request');
     await checkHistory(page.locator('#loginScreen').getByRole('button',{name:'UPDATE LOG / VERSION HISTORY'}), 'employee');
-    assert.equal(await page.locator('#employeeWebsiteName').inputValue(),'Preserve my request');
+    assert.equal(await page.getByLabel('WEBSITE NAME').inputValue(),'Preserve my request');
     await page.goto(url); await page.evaluate(() => showOverseerLogin());
     await page.locator('#overseerEmail').fill('test@example.com');
     await page.locator('#overseerPassword').fill('test-only'); await page.evaluate(() => overseerLogin());
-    await checkHistory(page.locator('#loginScreen').getByRole('button',{name:'UPDATE LOG / VERSION HISTORY'}), 'overseer');
+    await page.getByRole('button',{name:'SYSTEM',exact:true}).click();await checkHistory(page.locator('#loginScreen').getByRole('button',{name:'UPDATE LOG / VERSION HISTORY'}), 'overseer');
     assert.deepEqual(errors,[]);
     // History remains usable even if every external dependency is unavailable.
     await page.route('https://**',r => r.abort());
@@ -100,6 +101,6 @@ const server = http.createServer((req,res) => {
     const before = requests;
     await checkHistory(page.locator('.header .version-history-link'), 'offline-backend');
     assert.equal(requests,before);
-    console.log('PASS: canonical data, public/three-role access, combined v1.3/history/v1.4 planned roadmap, no editor/backend dependency, preserved form, Escape/close/focus, desktop/mobile layout.');
+    console.log('PASS: canonical data, public/three-role access, combined v1.4/history/v1.5 planned roadmap, no editor/backend dependency, preserved form, Escape/close/focus, desktop/mobile layout.');
   } finally {await browser.close();}
 })().catch(error => {console.error(error);process.exitCode=1;}).finally(() => server.close());

@@ -21,7 +21,7 @@ const root = path.resolve(__dirname,'..');
   const errors=[]; let failSave=false;
   try {
     const context = await browser.newContext();
-    await context.route('https://cdn.jsdelivr.net/**',r=>r.fulfill({contentType:'text/javascript',body:'window.supabase={createClient:()=>({})};'}));
+    await context.route('https://cdn.jsdelivr.net/**',r=>r.fulfill({contentType:'text/javascript',body:'window.supabase={createClient:()=>({auth:{getSession:async()=>({data:{session:null}})}})};'}));
     await context.route('https://*.supabase.co/**',async route => {
       const request=route.request(), url=new URL(request.url());
       const reply=(data,status=200)=>route.fulfill({status,contentType:'application/json',body:JSON.stringify(data)});
@@ -47,23 +47,19 @@ const root = path.resolve(__dirname,'..');
     const url=`http://127.0.0.1:${server.address().port}`;
     const page=await context.newPage(); page.on('pageerror',e=>errors.push(e.message));
     const employee=await context.newPage(); employee.on('pageerror',e=>errors.push(e.message));
+    // Retained legacy read-only document API regression. Personal accounts are tested in personnel-browser.cjs.
     async function loginEmployee(p) {
-      await p.goto(url); await p.evaluate(()=>showEmployeeLogin());
-      await p.locator('#employeePassword').fill('test-employee'); await p.getByRole('button',{name:'AUTHENTICATE',exact:true}).click();
-      await p.getByRole('button',{name:'📄 ROBCO EMPLOYEE DOCUMENT',exact:true}).waitFor();
+      await p.goto(url);await p.evaluate(()=>{window.employeePassword='test-employee';});
     }
     async function loginOverseer(p) {
       await p.goto(url); await p.evaluate(()=>showOverseerLogin());
       await p.locator('#overseerEmail').fill('test@example.com'); await p.locator('#overseerPassword').fill('test');
       await p.getByRole('button',{name:'AUTHENTICATE',exact:true}).click();
-      await p.getByRole('button',{name:'📄 MANAGE EMPLOYEE DOCUMENT',exact:true}).click();
+      await p.getByRole('button',{name:'PERSONNEL',exact:true}).click();await p.getByRole('button',{name:'📄 MANAGE EMPLOYEE DOCUMENT',exact:true}).click();
       await p.getByText(/REVISION 1 · SAVED/).waitFor();
     }
     await loginEmployee(employee);
-    await employee.locator('#employeeWebsiteName').fill('Employee request');
-    await employee.locator('#employeeWebsiteURL').fill('https://example.com');
-    await employee.locator('#employeeWebsiteDescription').fill('Existing form still works');
-    await employee.getByRole('button',{name:'📄 ROBCO EMPLOYEE DOCUMENT',exact:true}).click();
+    await employee.evaluate(()=>openEmployeeDocument());
     await employee.getByText(/READ ONLY/).waitFor();
     assert.equal(await employee.getByRole('button',{name:'EDIT DOCUMENT',exact:true}).count(),0);
     assert.equal(await employee.locator('[contenteditable=true]').count(),0);
@@ -71,10 +67,6 @@ const root = path.resolve(__dirname,'..');
       const r=await fetch(SUPABASE_URL+'/rest/v1/rpc/save_employee_document',{method:'POST',headers:{apikey:SUPABASE_KEY,'Content-Type':'application/json'},body:JSON.stringify({p_content:{type:'doc',children:[]},p_expected_revision:1})});return r.status;
     }); assert.equal(forgery,403);
     await employee.getByRole('button',{name:'CLOSE',exact:true}).click();
-    assert.equal(await employee.locator('#employeeWebsiteName').inputValue(),'Employee request');
-    await employee.getByRole('button',{name:'➕ SUBMIT REQUEST',exact:true}).click();
-    await employee.waitForFunction(()=>document.getElementById('employeeOutput').textContent.includes('REQUEST SENT'));
-    assert.equal((await db.query('select count(*)::int as n from website_requests')).rows[0].n,1);
     await loginOverseer(page);
     await page.getByRole('button',{name:'EDIT DOCUMENT',exact:true}).click();
     const editor=page.locator('article[contenteditable=true]');
@@ -112,13 +104,13 @@ const root = path.resolve(__dirname,'..');
     const types=[]; const walk=n=>{types.push(n.type); (n.children||[]).forEach(walk);}; walk(content);
     for(const type of ['strong','em','u','h2','ul','ol','a']) assert.ok(types.includes(type),type);
     assert.equal(await page.evaluate(()=>window.pwned),undefined);
-    await employee.getByRole('button',{name:'📄 ROBCO EMPLOYEE DOCUMENT',exact:true}).click();
+    await employee.evaluate(()=>openEmployeeDocument());
     await employee.getByText(/REVISION 2 · SAVED/).waitFor();
     assert.ok((await employee.locator('.employee-document-body').textContent()).includes('Persistent bold'));
     assert.equal(await employee.locator('.employee-document-body script').count(),0);
     // Reload and sign back in: persisted database content is read again.
     await page.reload(); await page.evaluate(()=>{window.overseerSession={access_token:'overseer-test'};showOverseerPanel();});
-    await page.getByRole('button',{name:'📄 MANAGE EMPLOYEE DOCUMENT',exact:true}).click();
+    await page.getByRole('button',{name:'PERSONNEL',exact:true}).click();await page.getByRole('button',{name:'📄 MANAGE EMPLOYEE DOCUMENT',exact:true}).click();
     await page.getByText(/REVISION 2 · SAVED/).waitFor();
     await page.getByRole('button',{name:'EDIT DOCUMENT',exact:true}).click();
     await page.locator('article[contenteditable=true]').fill('Cancel this draft'); await page.getByRole('button',{name:'CANCEL',exact:true}).click();
@@ -156,7 +148,7 @@ const root = path.resolve(__dirname,'..');
       if(process.env.DOC_SOURCE_SCREENSHOT) await page.screenshot({path:process.env.DOC_SOURCE_SCREENSHOT});
     }
     assert.deepEqual(errors,[]);
-    console.log('PASS: Employee/Overseer login flows, preserved request form, rich text/undo/redo, safe paste, PostgreSQL save/reload, Employee updates, cancel, offline draft, conflicts, history/restore, mobile layout.');
+    console.log('PASS: Legacy employee document API / Overseer login, rich text/undo/redo, safe paste, PostgreSQL save/reload, Employee updates, cancel, offline draft, conflicts, history/restore, mobile layout.');
   } finally {await browser.close(); await new Promise(r=>server.close(r)); await db.close();}
 })().catch(error=>{console.error(error);process.exitCode=1;});
 

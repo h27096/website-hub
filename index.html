@@ -13,6 +13,8 @@
   <link rel="stylesheet" href="training.css">
   <script src="training-engine.js" defer></script>
   <script src="training.js" defer></script>
+  <script src="personnel.js" defer></script>
+  <link rel="stylesheet" href="personnel.css">
 
   <style>
     :root {
@@ -974,290 +976,9 @@ const managedWebsites =
       }
     );
 
-  function showEmployeeLogin() {
-
-  document.getElementById("loginScreen").innerHTML = `
-
-    <div class="login">
-
-      <h1>☢ EMPLOYEE TERMINAL</h1>
-      <button onclick="openVersionHistory()">UPDATE LOG / VERSION HISTORY</button>
-
-      <p>
-        WEBSITE MANAGEMENT ACCESS
-      </p>
-
-      <input
-        id="employeePassword"
-        type="password"
-        placeholder="EMPLOYEE PASSWORD"
-        autocomplete="off"
-      >
-
-      <button onclick="employeeLogin()">
-        AUTHENTICATE
-      </button>
-
-      <button onclick="location.reload()">
-        RETURN
-      </button>
-
-      <div
-        id="employeeMessage"
-        class="message"
-      ></div>
-
-    </div>
-
-  `;
-
-}
-
-
-async function employeeLogin() {
-
-  const password =
-    document
-      .getElementById("employeePassword")
-      .value;
-
-  const message =
-    document
-      .getElementById("employeeMessage");
-
-  if (!password) {
-
-    message.textContent =
-      "ENTER EMPLOYEE PASSWORD.";
-
-    return;
-
-  }
-
-  message.textContent =
-    "AUTHENTICATING EMPLOYEE...";
-
-  try {
-
-    const response =
-      await databaseRequest(
-        "/rest/v1/rpc/employee_login",
-        {
-          method: "POST",
-
-          body:
-            JSON.stringify({
-              employee_password: password
-            })
-        }
-      );
-
-    const result =
-      await response.json();
-
-    if (!response.ok || !result) {
-
-      message.textContent =
-        "EMPLOYEE ACCESS DENIED.";
-
-      return;
-
-    }
-
-    window.employeePassword =
-      password;
-
-    showEmployeePanel();
-
-  }
-
-  catch (error) {
-
-    console.error(error);
-
-    message.textContent =
-      "SYSTEM CONNECTION ERROR.";
-
-  }
-
-}
-
-  function showEmployeePanel() {
-
-  document.getElementById("loginScreen").innerHTML = `
-
-    <div class="login">
-
-      <h1>☢ EMPLOYEE TERMINAL</h1>
-
-      <p>
-        WEBSITE SUBMISSION SYSTEM
-      </p>
-
-      <button onclick="openVersionHistory()">UPDATE LOG / VERSION HISTORY</button>
-
-      <hr>
-
-      <button onclick="openEmployeeDocument()">📄 ROBCO EMPLOYEE DOCUMENT</button>
-
-      <h3>REQUEST WEBSITE</h3>
-      <p>SUBMISSIONS REQUIRE OVERSEER APPROVAL BEFORE PUBLICATION.</p>
-
-      <input
-        id="employeeWebsiteName"
-        type="text"
-        placeholder="WEBSITE NAME"
-      >
-
-      <input
-        id="employeeWebsiteURL"
-        type="text"
-        placeholder="https://example.com"
-      >
-
-      <textarea
-        id="employeeWebsiteDescription"
-        placeholder="WEBSITE DESCRIPTION"
-        style="
-          width:100%;
-          min-height:100px;
-          margin-top:10px;
-          background:#010401;
-          border:1px solid #55ff55;
-          color:#55ff55;
-          font-family:inherit;
-          padding:14px;
-          resize:vertical;
-        "
-      ></textarea>
-
-      <button onclick="employeeAddWebsite()">
-        ➕ SUBMIT REQUEST
-      </button>
-
-      <button onclick="employeeLogout()">
-        🚪 EXIT EMPLOYEE MODE
-      </button>
-
-      <div
-        id="employeeOutput"
-        class="message"
-        style="margin-top:20px;"
-      ></div>
-
-    </div>
-
-  `;
-
-}
-
-  async function employeeAddWebsite() {
-
-  const name =
-    document
-      .getElementById("employeeWebsiteName")
-      .value
-      .trim();
-
-  const url =
-    document
-      .getElementById("employeeWebsiteURL")
-      .value
-      .trim();
-
-  const description =
-    document
-      .getElementById("employeeWebsiteDescription")
-      .value
-      .trim();
-
-  const output =
-    document
-      .getElementById("employeeOutput");
-
-  if (!name || !url || !/^https?:\/\/[^\s]+$/i.test(url)) {
-
-    output.textContent =
-      "☢ ENTER A NAME AND VALID HTTP(S) URL.";
-
-    return;
-
-  }
-
-  try {
-
-    const response =
-      await databaseRequest(
-        "/rest/v1/rpc/submit_website_request",
-        {
-          method: "POST",
-
-          body:
-            JSON.stringify({
-              employee_password:
-                window.employeePassword,
-
-              website_name:
-                name,
-
-              website_url:
-                url,
-
-              website_description:
-                description
-            })
-        }
-      );
-
-    const result =
-      await response.json();
-
-    if (!response.ok || !result) {
-
-      output.textContent =
-        "☢ REQUEST FAILED. CONTACT AN OVERSEER IF THE DATABASE MIGRATION IS PENDING.";
-
-      console.error(result);
-
-      return;
-
-    }
-
-    output.textContent =
-      "☢ REQUEST SENT FOR OVERSEER REVIEW.";
-
-    document
-      .getElementById("employeeWebsiteName")
-      .value = "";
-
-    document
-      .getElementById("employeeWebsiteURL")
-      .value = "";
-
-    document
-      .getElementById("employeeWebsiteDescription")
-      .value = "";
-
-  }
-
-  catch (error) {
-
-    console.error(error);
-
-    output.textContent =
-      "☢ DATABASE CONNECTION ERROR.";
-
-  }
-
-}
-
-  function employeeLogout() {
-
-  window.employeePassword = null;
-
-  location.reload();
-
-}
+  function showEmployeeLogin() { return window.Personnel.openLogin(); }
+  function showEmployeePanel() { return window.Personnel.dashboard(); }
+  function employeeLogout() { location.reload(); }
 
   function showOverseerLogin() {
 
@@ -2798,12 +2519,12 @@ async function reactivateCode(id) {
 
       card.innerHTML = `
         <strong>
-          ${announcement.title}
+          ${escapeHTML(announcement.title)}
         </strong>
 
         <br><br>
 
-        ${announcement.message}
+        ${escapeHTML(announcement.message)}
 
         <br><br>
 
@@ -3086,18 +2807,18 @@ async function reactivateCode(id) {
 
       card.innerHTML = `
         <strong>
-          ${website.name}
+          ${escapeHTML(website.name)}
         </strong>
 
         <br><br>
 
         URL:
-        ${website.url}
+        ${escapeHTML(website.url)}
 
         <br>
 
         DESCRIPTION:
-        ${website.description || "NONE"}
+        ${escapeHTML(website.description || "NONE")}
 
         <br>
 
