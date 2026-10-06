@@ -20,6 +20,9 @@ node tests/training-auth.cjs
 node tests/training-browser.cjs
 node tests/training-diagnostics.cjs
 node tests/training-cors.cjs
+node tests/personnel-db.cjs
+node tests/personnel-auth.cjs
+node tests/personnel-browser.cjs
 ```
 
 All service calls are fixtures or local PostgreSQL, with no writes to production.
@@ -33,7 +36,7 @@ the shared Version History also adds a dialog to the document.
 Training's SQL and browser suites use isolated PGlite databases. Its Auth suite
 executes the real Edge handler with a mocked Auth transport, not a live service.
 For production setup and acceptance checks see `SUPABASE_TRAINING_SETUP.md`.
-The version-history suite now expects v1.3 released and v1.4 planned.
+The version-history suite now expects v1.4 released and v1.5 planned.
 
 The stabilization suite verifies missing-function HTTP 404 before any POST,
 network/CORS diagnostics, sanitized secrets, partial account creation, profile
@@ -47,3 +50,5 @@ and an isolated Auth transport, testing creation/sign-in across two Hub origins,
 readiness without custom headers/cookies, OPTIONS denial, missing deployment,
 opaque/unreachable/authorization failures, restricted origins and admin denial.
 No browser CORS/security-disabling flags or live accounts are used.
+
+The personnel suites use real additive migrations and real Edge handler execution with isolated Auth/Storage transports. Chromium covers personal credentials/refresh, permission-backed workflows, notes/XSS, private PDF assignment, proposal imports and approvals, nested categories, temporary scope, session invalidation and archival. Production deployment and acceptance are separate; see `SUPABASE_PERSONNEL_SETUP.md`.

@@ -2,3 +2,7 @@
 # Signup, login and recovery are public; administrative actions verify the bearer
 # with Auth.getUser and the existing overseers table inside the function.
 verify_jwt = false
+
+[functions.personnel-auth]
+# Public login/code redemption; private operations verify getUser + Overseer/owner RPC.
+verify_jwt = false

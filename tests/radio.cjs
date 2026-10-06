@@ -19,7 +19,7 @@ const server = http.createServer((req,res) => {
     const page = await browser.newPage();
     const errors = [];
     page.on('pageerror', error => errors.push(error.message));
-    await page.route('https://cdn.jsdelivr.net/**', route => route.fulfill({contentType:'text/javascript', body:'window.supabase={createClient:()=>({})};'}));
+    await page.route('https://cdn.jsdelivr.net/**', route => route.fulfill({contentType:'text/javascript', body:'window.supabase={createClient:()=>({auth:{getSession:async()=>({data:{session:null}})}})};'}));
     await page.route('https://*.supabase.co/**', route => {
       const url = route.request().url();
       let data = [];
@@ -124,9 +124,7 @@ const server = http.createServer((req,res) => {
     await page.evaluate(() => logout());
     assert(await page.locator('#loginScreen').isVisible());
     await page.evaluate(() => showEmployeeLogin());
-    await page.locator('#employeePassword').fill('test-only');
-    await page.evaluate(() => employeeLogin());
-    assert(await page.locator('#employeeWebsiteName').isVisible());
+    await page.getByRole('heading',{name:'SELECT PERSONNEL RECORD'}).waitFor();
     await page.goto(url);
     await page.evaluate(() => showOverseerLogin());
     await page.locator('#overseerEmail').fill('test@example.com');

@@ -1,0 +1,14 @@
+.personnel-shell{width:min(100%,1050px)!important;max-width:1050px!important;box-sizing:border-box;margin:20px auto;padding:20px;overflow-wrap:anywhere;text-align:left}
+.personnel-shell .personnel-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(240px,100%),1fr));gap:12px}
+.personnel-shell button{min-height:44px;white-space:normal;overflow-wrap:anywhere}
+.personnel-shell nav{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:18px}
+.personnel-shell label{display:block;margin:14px 0}
+.personnel-shell input,.personnel-shell select,.personnel-shell textarea{box-sizing:border-box;width:100%;max-width:100%;background:#010401;color:#55ff55;border:1px solid #159615;font:inherit;padding:10px}
+.personnel-shell input[type=checkbox]{width:auto;margin-left:12px}
+.personnel-shell textarea{min-height:100px;resize:vertical}
+.personnel-card{border:1px solid #159615;padding:16px;margin:15px 0}
+.personnel-shell pre{white-space:pre-wrap;overflow-wrap:anywhere;max-height:500px;overflow:auto}
+.personnel-error{color:#ffb96c}
+.personnel-shell a{color:#55ff55}
+.personnel-shell [hidden]{display:none!important}
+@media(max-width:600px){.personnel-shell{padding:12px;margin:0;width:100%!important}.personnel-shell button{width:100%;margin:5px 0}}

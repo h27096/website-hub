@@ -67,7 +67,7 @@ const root = path.resolve(__dirname, "..");
     channel: process.env.BROWSER_CHANNEL || "msedge",
   });
   const errors = [];
-  const mockSDK = `window.supabase={createClient:(u,k,o)=>({auth:{getSession:async()=>({data:{session:JSON.parse(localStorage.getItem('test-training-session')||'null')}}),setSession:async(s)=>{localStorage.setItem('test-training-session',JSON.stringify(s));return{};},signOut:async()=>{localStorage.removeItem('test-training-session');return{};}}})};`;
+  const mockSDK = `window.supabase={createClient:(u,k,o)=>({auth:{getSession:async()=>({data:{session:o?.auth?.storageKey==='robco-personnel-v14'?null:JSON.parse(localStorage.getItem('test-training-session')||'null')}}),setSession:async(s)=>{localStorage.setItem('test-training-session',JSON.stringify(s));return{};},signOut:async()=>{localStorage.removeItem('test-training-session');return{};}}})};`;
   async function prepare(page) {
     page.on("pageerror", (e) => errors.push(e.message));
     await page.route("https://cdn.jsdelivr.net/**", (r) =>
