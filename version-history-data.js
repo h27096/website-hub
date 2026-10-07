@@ -2,6 +2,7 @@
 const ROBCO_VERSION_HISTORY = {
   releases: [
     { version: 'v1.4', changes: [
+      'Maintenance: removed the legacy Files and Holotapes features, including stale Overseer access; Employee Notes and private Personnel Paperwork remain available.',
       'Added personal Employee accounts, persistent dashboards and personnel records with backend roles/permissions, secure password resets and archiving.',
       'Linked new Website Requests to authenticated employees with review responses and personal request history; preserved legacy requests as unassigned.',
       'Added private Training drafts, supported question editing/import, new-set and edit proposals, Overseer before/after review and revision-conflict-safe approval.',

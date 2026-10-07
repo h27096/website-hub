@@ -44,6 +44,11 @@ const server=http.createServer((req,res)=>{const file=path.resolve(root,'.'+(req
     });
     await page.goto(`http://127.0.0.1:${server.address().port}`);await page.evaluate(()=>showOverseerLogin());
     await page.locator('#overseerEmail').fill('test@example.com');await page.locator('#overseerPassword').fill('test');await page.evaluate(()=>overseerLogin());
+    assert.equal(await page.getByRole('button',{name:/holotape|secret files|robco files/i}).count(),0);
+    assert.equal(await page.evaluate(()=>typeof showSecretFiles),'undefined');
+    await page.evaluate(()=>{openUserSide();showUserPage('files');showUserPage('holotapes');});
+    assert(await page.locator('#dashboard').isVisible());
+    await page.evaluate(()=>returnToOverseer());
     await page.evaluate(()=>showWebsiteManager());await page.evaluate(()=>toggleAddWebsite());
     await page.locator('#websiteName').fill('Test site');await page.locator('#websiteURL').fill('https://example.com');await page.locator('#websiteDescription').fill('Fixture');await page.evaluate(()=>createManagedWebsite());
     await page.waitForFunction(()=>document.getElementById('managedWebsiteList').textContent.includes('Test site'));

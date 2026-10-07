@@ -206,7 +206,6 @@
       opacity: .5;
       font-size: 12px;
     }
-    .archive-list { display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:12px; margin:18px 0; }
     .archive-card { display:flex; flex-direction:column; text-align:left; min-height:85px; }
     .archive-card small { opacity:.72; margin-top:9px; }
     .record-reader { padding:18px; min-height:130px; border:1px solid var(--dark-green); background:#061006; white-space:pre-wrap; overflow-wrap:anywhere; }
@@ -290,20 +289,12 @@
       📢 ANNOUNCEMENTS
     </button>
 
-    <button onclick="showUserPage('holotapes')">
-      📼 HOLOTAPES
-    </button>
-
     <button onclick="showUserPage('radio')">
       📻 RADIO
     </button>
 
     <button onclick="showUserPage('games')">
       🎮 MINI-GAMES
-    </button>
-
-    <button onclick="showUserPage('files')">
-      📁 ROBCO FILES
     </button>
 
   </div>
@@ -365,41 +356,6 @@
 
   </section>
 
-  <section
-  id="holotapes"
-  class="hidden"
->
-
-  <button
-    class="back-button"
-    onclick="showUserPage('dashboard')"
-  >
-    ← BACK TO DASHBOARD
-  </button>
-
-  <div class="holotape-header">
-
-    <h2>📼 HOLOTAPE LIBRARY</h2>
-
-    <p>
-      ROBCO ARCHIVE // AUTHORIZED USER ACCESS
-    </p>
-
-  </div>
-
-  <div class="archive-list" aria-label="Holotape list"></div>
-  <article id="holotapeReader" class="record-reader" tabindex="-1" aria-live="polite"></article>
-
-</section>
-
-
-<section id="files" class="hidden">
-  <button onclick="showUserPage('dashboard')">← BACK TO DASHBOARD</button>
-  <h2>📁 ROBCO FILES // DOCUMENT ARCHIVE</h2>
-  <p>AUTHORIZED REFERENCE RECORDS</p>
-  <div class="archive-list" aria-label="Document list"></div>
-  <article id="fileReader" class="record-reader" tabindex="-1" aria-live="polite"></article>
-</section>
 <section id="games" class="hidden">
   <button onclick="showUserPage('dashboard')">← BACK TO DASHBOARD</button>
   <h2>🎮 TERMINAL MINI-GAMES</h2>
@@ -889,7 +845,7 @@ const managedWebsites =
 
     stopRobcoRadio();
 
-    ["dashboard", "holotapes", "files", "games", "radio"].forEach(id =>
+    ["dashboard", "games", "radio"].forEach(id =>
       document.getElementById(id).classList.add("hidden")
     );
 
@@ -1263,10 +1219,6 @@ async function overseerLogin() {
   </div>
 
 </div>
-
-      <button onclick="showSecretFiles()">
-        🕵️ SECRET FILES
-      </button>
 
       <button onclick="logoutOverseer()">
         🚪 EXIT OVERSEER MODE
@@ -1941,28 +1893,6 @@ async function reviewWebsiteRequest(id, decision, approve, reject) {
     approve.disabled = reject.disabled = false;
     alert("REQUEST REVIEW FAILED. PLEASE TRY AGAIN.");
   }
-}
-
-function showSecretFiles() {
-
-  document.getElementById("overseerOutput").innerHTML = `
-
-    <h3>☢ CLASSIFIED FILES</h3>
-
-    <p>
-      ACCESS LEVEL: OVERSEER
-    </p>
-
-    <p>
-      FILES CURRENTLY ENCRYPTED.
-    </p>
-
-    <p>
-      ████████████████████████
-    </p>
-
-  `;
-
 }
 
 async function viewAccessCodes() {
@@ -3345,7 +3275,7 @@ async function reactivateCode(id) {
 
   function showUserPage(page) {
     if (page !== 'games') stopRobcoGame();
-    const sections = ['dashboard', 'hub', 'holotapes', 'files', 'games', 'radio'];
+    const sections = ['dashboard', 'hub', 'games', 'radio'];
     if (page === 'dashboard') {
       stopRobcoRadio();
       sections.forEach(id => document.getElementById(id).classList.toggle('hidden', id !== 'dashboard'));
@@ -3361,9 +3291,7 @@ async function reactivateCode(id) {
     } else if (page === 'announcements') {
       document.getElementById('sites').replaceChildren();
       loadUserAnnouncements();
-    } else if (page === 'holotapes') renderHolotapes();
-    else if (page === 'files') renderFiles();
-    else if (page === 'radio') { updateRadioDisplay(); refreshRadioLibrary(); }
+    } else if (page === 'radio') { updateRadioDisplay(); refreshRadioLibrary(); }
   }
 
 function openUserSide() {
@@ -3415,7 +3343,7 @@ function returnToOverseer() {
     .getElementById("hub")
     .classList.add("hidden");
 
-  ["holotapes", "files", "games", "radio"].forEach(id => document.getElementById(id).classList.add("hidden"));
+  ["games", "radio"].forEach(id => document.getElementById(id).classList.add("hidden"));
 
   document
     .getElementById("loginScreen")
