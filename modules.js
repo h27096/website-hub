@@ -1,14 +1,4 @@
-/* RobCo archive modules: fictional local content; no database permissions required. */
-const ROBCO_TAPES = [
-  { id: 'HT-001', title: 'Morning Systems Check', location: 'VAULT OPERATIONS', entries: ['08:00 // Terminal array online.', '08:14 // Air filters inspected. Replacement scheduled for next cycle.', '08:32 // Archive access restored to public terminals.'] },
-  { id: 'HT-002', title: 'Supply Inventory', location: 'ROBCO LOGISTICS', entries: ['Crate 14: spare circuit boards.', 'Crate 15: replacement fuses.', 'Note: submit all inventory corrections to the records desk.'] },
-  { id: 'HT-003', title: 'Training Orientation', location: 'EMPLOYEE SERVICES', entries: ['Welcome to the RobCo terminal network.', 'Select a document from Files to read archived records.', 'Report faulty equipment to a supervisor.'] }
-];
-const ROBCO_DOCUMENTS = [
-  { id: 'DOC-100', title: 'Terminal Operations Handbook', category: 'ROBCO', lines: ['Use an assigned terminal for authorized tasks.', 'Check the daily system bulletin before beginning a shift.', 'Record maintenance issues in the service log.'] },
-  { id: 'DOC-207', title: 'Vault Supply Requisition', category: 'VAULT-TEC', lines: ['Request: replacement display tubes, quantity 4.', 'Request: printed maintenance forms, quantity 20.', 'Status: awaiting warehouse confirmation.'] },
-  { id: 'DOC-312', title: 'Archive Index', category: 'RECORDS', lines: ['HT-001 // Morning Systems Check', 'HT-002 // Supply Inventory', 'HT-003 // Training Orientation'] }
-];
+/* Shared Radio cards and local mini-games. */
 let robcoGame = null;
 
 function moduleCard(title, subtitle, onClick) {
@@ -22,28 +12,6 @@ function moduleCard(title, subtitle, onClick) {
   button.addEventListener('click', onClick);
   return button;
 }
-function renderArchive(section, items, subtitle, readerId) {
-  const list = document.querySelector('#' + section + ' .archive-list');
-  const reader = document.getElementById(readerId);
-  list.replaceChildren();
-  reader.textContent = 'SELECT A RECORD TO BEGIN.';
-  items.forEach(item => list.appendChild(moduleCard(item.title, item.id + ' // ' + (item.location || item.category), () => {
-    reader.replaceChildren();
-    const title = document.createElement('h3');
-    title.textContent = item.id + ' // ' + item.title;
-    const label = document.createElement('p');
-    label.textContent = (item.location || item.category) + ' // ' + subtitle;
-    reader.append(title, label);
-    (item.entries || item.lines).forEach(line => {
-      const p = document.createElement('p');
-      p.textContent = '> ' + line;
-      reader.appendChild(p);
-    });
-    reader.focus();
-  })));
-}
-function renderHolotapes() { renderArchive('holotapes', ROBCO_TAPES, 'PLAYBACK COMPLETE', 'holotapeReader'); }
-function renderFiles() { renderArchive('files', ROBCO_DOCUMENTS, 'END OF FILE', 'fileReader'); }
 function startCodebreaker() {
   const lifecycle = beginRobcoGame('CODEBREAKER', '', startCodebreaker);
   robcoGame = { code: String(Math.floor(Math.random() * 900) + 100), tries: 0 };

@@ -333,8 +333,8 @@ Those are Supabase/platform acceptance checks:
 5. Disable/re-enable, rename and moderate a score. Try management requests using
    a regular Training JWT; they must fail. Delete only the disposable account
    with exact confirmation. Confirm an impossible score cannot be submitted.
-6. Smoke-test existing Employee and Overseer access, Radio/Music, Files,
-   Holotapes, announcements, access codes, websites, mini-games and Version
+6. Smoke-test existing Employee and Overseer access, Radio/Music,
+   announcements, access codes, websites, mini-games and Version
    History. Confirm the canceled proxy remains absent.
 
 ## Limits and v1.4 boundary

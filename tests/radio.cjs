@@ -99,12 +99,14 @@ const server = http.createServer((req,res) => {
     await page.waitForFunction(() => robcoState === 'ON AIR');
     await page.evaluate(() => showUserPage('dashboard'));
     assert(await page.evaluate(() => robcoAudio === null));
-    await page.evaluate(() => showUserPage('holotapes'));
-    await page.locator('#holotapes .archive-card').first().click();
-    assert.match(await page.locator('#holotapeReader').textContent(),/Morning Systems Check/);
-    await page.evaluate(() => showUserPage('files'));
-    await page.locator('#files .archive-card').first().click();
-    assert.match(await page.locator('#fileReader').textContent(),/Terminal Operations Handbook/);
+    // Removed routes must be harmless and leave the current dashboard visible.
+    for (const route of ['files', 'holotapes']) {
+      await page.evaluate(route => showUserPage(route), route);
+      assert(await page.locator('#dashboard').isVisible());
+    }
+    assert.equal(await page.locator('#files, #holotapes, #fileReader, #holotapeReader').count(), 0);
+    assert.equal(await page.getByRole('button', {name:/holotape|robco files|secret files/i}).count(), 0);
+    assert(await page.evaluate(() => ['renderFiles', 'renderHolotapes', 'showSecretFiles', 'renderArchive'].every(name => typeof window[name] === 'undefined')));
     await page.evaluate(() => { showUserPage('games'); startCodebreaker(); });
     const code = await page.evaluate(() => robcoGame.code);
     await page.locator('#gameOutput input').fill(code);
@@ -137,7 +139,7 @@ const server = http.createServer((req,res) => {
     await page.evaluate(() => returnToOverseer());
     assert(await page.evaluate(() => robcoAudio === null));
     assert.deepEqual(errors,[]);
-    console.log('PASS: audio rendering, playback, pause, seek, navigation, queue advance, station switching, mute, errors, async cancellation, responsive layout, login, dashboard, archives, games, websites, announcements, employee and Overseer flows (mocked service).');
+    console.log('PASS: audio rendering, playback, pause, seek, navigation, queue advance, station switching, mute, errors, async cancellation, responsive layout, login, dashboard, removed archive routes, games, websites, announcements, employee and Overseer flows (mocked service).');
   } finally { await browser.close(); }
 })().catch(error => { console.error(error); process.exitCode = 1; }).finally(() => server.close());
 
